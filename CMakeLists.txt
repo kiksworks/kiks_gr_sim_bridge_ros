@@ -5,7 +5,7 @@ project(kiks_gr_sim_bridge)
 set(ros2_required_packages
   rclcpp
   geometry_msgs
-  nav_msgs
+  pendulum_msgs
   tf2_ros)
 
 foreach(ros2_required_package IN LISTS ros2_required_packages)

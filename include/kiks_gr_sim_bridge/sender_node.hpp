@@ -17,8 +17,41 @@
 #ifndef KIKS_GR_SIM_BRIDGE__SENDER_NODE_HPP_
 #define KIKS_GR_SIM_BRIDGE__SENDER_NODE_HPP_
 
+#include <string>
+
+#include "QNetworkInterface"
+#include "QUdpSocket"
+
+#include "kiks_gr_sim_bridge/ros_node_base.hpp"
+
 namespace kiks::gr_sim_bridge
 {
+
+class SenderNode : public RosNodeBase
+{
+public:
+  static std::string default_name();
+
+  explicit SenderNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+
+  SenderNode(
+    const std::string & node_name, const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+
+  SenderNode(
+    const std::string & node_name, const std::string & node_namespace,
+    const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+
+  explicit SenderNode(rclcpp::Node::SharedPtr node);
+
+private:
+  void send();
+
+  QUdpSocket udp_socket_;
+  QHostAddress udp_gr_sim_address_;
+  quint16 udp_port_;
+
+  rclcpp::TimerBase::SharedPtr sending_timer_;
+};
 
 }  // namespace kiks::gr_sim_bridge
 

@@ -18,8 +18,6 @@
 
 #include <chrono>
 
-#include "grSim_Packet.pb.h"
-
 namespace kiks::gr_sim_bridge
 {
 
@@ -59,13 +57,51 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
     sending_timer_ =
         node_->create_wall_timer(sending_duration, std::bind(&SenderNode::send, this));
   });
+  // Parameter of each team robots
+  // Default is {"${teamcolor}00, ${teamcolor}01 ... "${teamcolor}14", "${teamcolor}15"} for each team
+  auto create_robots_str = [this](const std::string & base_name) {
+      std::vector<std::string> namespaces;
+      for (int i = 0; i < 16; ++i) {
+        const auto ns =
+          (i < 10) ? (base_name + "0" + std::to_string(i)) : (base_name + std::to_string(i));
+        namespaces.push_back(ns);
+      }
+      return namespaces;
+    };
+  auto set_robots = [this](TeamData& data, const std::vector<std::string>& str_array, bool team_is_yellow) {
+      data.robot_subscriber_nodes.clear();
+      const auto commands = data.packet.mutable_commands();
+      commands->set_isteamyellow(team_is_yellow);
+      const auto replacement = data.packet.mutable_replacement();
+      commands->clear_robot_commands();
+      for (std::uint32_t i = 0; i < str_array.size(); ++i) {
+        const auto & str = str_array[i];
+        if (str == "") {
+          continue;
+        }
+        const auto robot_command = commands->add_robot_commands();
+        robot_command->set_id(i);
+        data.robot_subscriber_nodes.emplace_back(robot_command, replacement, team_is_yellow, node_->create_sub_node(str));
+      }
+    };
+  this->add_parameter<std::vector<std::string>>(
+    "yellow_robots", create_robots_str("yellow"), [this, set_robots](const auto & param) {
+      set_robots(yellow_, param.as_string_array(), true);
+    });
+  this->add_parameter<std::vector<std::string>>(
+    "blue_robots", create_robots_str("blue"), [this, set_robots](const auto & param) {
+      set_robots(blue_, param.as_string_array(), false);
+    });
 }
 
 void SenderNode::send()
 {
-  grSim_Packet packet;
-  auto data_str = packet.SerializeAsString();
-  udp_socket_.writeDatagram(data_str.data(), data_str.size(), udp_gr_sim_address_, udp_port_);
+  auto send_packet = [this](const auto& packet) {
+      const auto data_str = packet.SerializeAsString();
+      udp_socket_.writeDatagram(data_str.data(), data_str.size(), udp_gr_sim_address_, udp_port_);
+    };
+  send_packet(yellow_.packet);
+  send_packet(blue_.packet);
 }
 
 }  // namespace kiks::gr_sim_bridge

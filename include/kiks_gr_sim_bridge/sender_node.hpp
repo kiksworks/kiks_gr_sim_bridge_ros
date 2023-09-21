@@ -18,11 +18,14 @@
 #define KIKS_GR_SIM_BRIDGE__SENDER_NODE_HPP_
 
 #include <string>
+#include <list>
 
 #include "QNetworkInterface"
 #include "QUdpSocket"
 
 #include "kiks_gr_sim_bridge/ros_node_base.hpp"
+#include "kiks_gr_sim_bridge/robot_subscriber_node.hpp"
+#include "grSim_Packet.pb.h"
 
 namespace kiks::gr_sim_bridge
 {
@@ -44,12 +47,18 @@ public:
   explicit SenderNode(rclcpp::Node::SharedPtr node);
 
 private:
+  struct TeamData
+  {
+    grSim_Packet packet;
+    std::list<RobotSubscriberNode> robot_subscriber_nodes;
+  };
+
   void send();
 
   QUdpSocket udp_socket_;
   QHostAddress udp_gr_sim_address_;
   quint16 udp_port_;
-
+  TeamData yellow_, blue_;
   rclcpp::TimerBase::SharedPtr sending_timer_;
 };
 

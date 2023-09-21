@@ -102,12 +102,21 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
 
 void SenderNode::send()
 {
-  auto send_packet = [this](const auto & packet) {
+  const double stamp = node_->now().nanoseconds() * 0.001 * 0.001 * 0.001;
+  auto send_packet = [stamp, this](auto & packet) {
+      packet.mutable_commands()->set_timestamp(stamp);
       const auto data_str = packet.SerializeAsString();
       udp_socket_.writeDatagram(data_str.data(), data_str.size(), udp_gr_sim_address_, udp_port_);
     };
+  auto clear_replacement = [](auto & packet) {
+      const auto replacement = packet.mutable_replacement();
+      replacement->clear_ball();
+      replacement->clear_robots();
+    };
   send_packet(yellow_.packet);
   send_packet(blue_.packet);
+  clear_replacement(yellow_.packet);
+  clear_replacement(blue_.packet);
 }
 
 }  // namespace kiks::gr_sim_bridge

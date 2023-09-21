@@ -52,11 +52,14 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
       udp_gr_sim_address_ = QHostAddress(param.as_string().c_str());
     });
   // Parameter of sending_timer update frequency[hz]
-  this->add_parameter<double>("sending_freq", 60.0, [this](const auto & param){
-    std::chrono::nanoseconds sending_duration(static_cast<int>(1000.0 * 1000.0 * 1000.0 / param.as_double()));
-    sending_timer_ =
-        node_->create_wall_timer(sending_duration, std::bind(&SenderNode::send, this));
-  });
+  this->add_parameter<double>(
+    "sending_freq", 60.0, [this](const auto & param) {
+      std::chrono::nanoseconds sending_duration(
+        static_cast<int>(1000.0 * 1000.0 * 1000.0 /
+        param.as_double()));
+      sending_timer_ =
+      node_->create_wall_timer(sending_duration, std::bind(&SenderNode::send, this));
+    });
   // Parameter of each team robots
   // Default is {"${teamcolor}00, ${teamcolor}01 ... "${teamcolor}14", "${teamcolor}15"} for each team
   auto create_robots_str = [this](const std::string & base_name) {
@@ -68,7 +71,8 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
       }
       return namespaces;
     };
-  auto set_robots = [this](TeamData& data, const std::vector<std::string>& str_array, bool team_is_yellow) {
+  auto set_robots =
+    [this](TeamData & data, const std::vector<std::string> & str_array, bool team_is_yellow) {
       data.robot_subscriber_nodes.clear();
       const auto commands = data.packet.mutable_commands();
       commands->set_isteamyellow(team_is_yellow);
@@ -81,7 +85,9 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
         }
         const auto robot_command = commands->add_robot_commands();
         robot_command->set_id(i);
-        data.robot_subscriber_nodes.emplace_back(robot_command, replacement, team_is_yellow, node_->create_sub_node(str));
+        data.robot_subscriber_nodes.emplace_back(
+          robot_command, replacement, team_is_yellow, node_->create_sub_node(
+            str));
       }
     };
   this->add_parameter<std::vector<std::string>>(
@@ -96,7 +102,7 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
 
 void SenderNode::send()
 {
-  auto send_packet = [this](const auto& packet) {
+  auto send_packet = [this](const auto & packet) {
       const auto data_str = packet.SerializeAsString();
       udp_socket_.writeDatagram(data_str.data(), data_str.size(), udp_gr_sim_address_, udp_port_);
     };

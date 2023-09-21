@@ -38,7 +38,8 @@ RobotSubscriberNode::RobotSubscriberNode(
   bool team_is_yellow,
   const std::string & node_name,
   const rclcpp::NodeOptions & options)
-: RobotSubscriberNode(command, replacement, team_is_yellow, std::make_shared<rclcpp::Node>(node_name, options))
+: RobotSubscriberNode(command, replacement, team_is_yellow,
+    std::make_shared<rclcpp::Node>(node_name, options))
 {
 }
 
@@ -102,7 +103,9 @@ RobotSubscriberNode::RobotSubscriberNode(
   initialpose_subscription_ = node_->create_subscription<PoseMsg>(
     "initialpose",
     this->get_dynamic_qos(),
-    std::bind(team_is_yellow ? &RobotSubscriberNode::subscribe_initialpose<true> : &RobotSubscriberNode::subscribe_initialpose<false>, this, std::placeholders::_1));
+    std::bind(
+      team_is_yellow ? &RobotSubscriberNode::subscribe_initialpose<true> : &
+      RobotSubscriberNode::subscribe_initialpose<false>, this, std::placeholders::_1));
 }
 
 void RobotSubscriberNode::update_validity()
@@ -142,7 +145,7 @@ void RobotSubscriberNode::subscribe_cmd_spinner(JointMsg::ConstSharedPtr cmd_spi
   command_->set_spinner(cmd_spinner_msg->velocity > 0);
 }
 
-template <bool kTeamIsYellow>
+template<bool kTeamIsYellow>
 void RobotSubscriberNode::subscribe_initialpose(PoseMsg::ConstSharedPtr initialpose_msg)
 {
   auto robot = replacement_->add_robots();

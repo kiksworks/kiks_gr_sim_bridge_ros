@@ -73,7 +73,7 @@ private:
 
   void subscribe_cmd_spinner(JointMsg::ConstSharedPtr cmd_spinner_msg);
 
-  template <bool kTeamIsYellow>
+  template<bool kTeamIsYellow>
   void subscribe_initialpose(PoseMsg::ConstSharedPtr initialpose_msg);
 
   grSim_Robot_Command * const command_;

@@ -115,9 +115,9 @@ RobotSubscriberNode::RobotSubscriberNode(
   vel_valid_time_ = kick_valid_time_ = node_->now();
 }
 
-void RobotSubscriberNode::update_validity(const rclcpp::Time& now)
+void RobotSubscriberNode::update_validity(const rclcpp::Time & now)
 {
-  if(now > vel_valid_time_) {
+  if (now > vel_valid_time_) {
     command_->set_veltangent(0);
     command_->set_velnormal(0);
     command_->set_velangular(0);

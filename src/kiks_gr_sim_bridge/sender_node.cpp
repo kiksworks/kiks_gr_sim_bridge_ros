@@ -60,66 +60,46 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
       sending_timer_ =
       node_->create_wall_timer(sending_duration, std::bind(&SenderNode::send, this));
     });
-  // Parameter of each team robots
-  // Default is {"${teamcolor}00, ${teamcolor}01 ... "${teamcolor}14", "${teamcolor}15"} for each team
-  auto create_robots_str = [this](const std::string & base_name) {
-      std::vector<std::string> namespaces;
+  // initialize robots by initializer func
+  auto initialize_robots =
+    [this](const std::string & team_str, TeamData & team_data, bool team_is_yellow) {
+      // create default robot_strs
+      std::vector<std::string> default_robot_strs;
       for (int i = 0; i < 16; ++i) {
-        const auto ns =
-          (i < 10) ? (base_name + "0" + std::to_string(i)) : (base_name + std::to_string(i));
-        namespaces.push_back(ns);
+        default_robot_strs.emplace_back(
+          (i < 10) ?
+          (team_str + "0" + std::to_string(i)) : (team_str + std::to_string(i)));
       }
-      return namespaces;
+      // set commnad team_color
+      team_data.packet.mutable_commands()->set_isteamyellow(team_is_yellow);
+      // Parameter of robot nodes
+      // Default is {"${teamcolor}00, ${teamcolor}01 ... "${teamcolor}14", "${teamcolor}15"} for each team
+      this->add_parameter<std::vector<std::string>>(
+        team_str + "_robots", default_robot_strs,
+        [this, &team_data, team_is_yellow](const auto & param) {
+          set_robot_nodes(&team_data, param.get_value_message(), team_is_yellow);
+        });
+      // set robot nodes subscription
+      team_data.robots_param_subscription = node_->create_subscription<ParameterMsg>(
+        team_str + "_robots", this->get_static_qos(),
+        [this, &team_data, team_is_yellow](ParameterMsg::ConstSharedPtr robots_param_msg) {
+          set_robot_nodes(&team_data, *robots_param_msg, team_is_yellow);
+        });
     };
-  auto set_robots =
-    [this](TeamData & data, const std::vector<std::string> & str_array, bool team_is_yellow) {
-      data.robot_subscriber_nodes.clear();
-      const auto commands = data.packet.mutable_commands();
-      commands->set_isteamyellow(team_is_yellow);
-      const auto replacement = data.packet.mutable_replacement();
-      commands->clear_robot_commands();
-      for (std::uint32_t i = 0; i < str_array.size(); ++i) {
-        const auto & str = str_array[i];
-        if (str == "") {
-          continue;
-        }
-        const auto robot_command = commands->add_robot_commands();
-        robot_command->set_id(i);
-        data.robot_subscriber_nodes.emplace_back(
-          robot_command, replacement, team_is_yellow, node_->create_sub_node(
-            str));
-      }
-    };
-  this->add_parameter<std::vector<std::string>>(
-    "yellow_robots", create_robots_str("yellow"), [this, set_robots](const auto & param) {
-      set_robots(yellow_, param.as_string_array(), true);
-    });
-  this->add_parameter<std::vector<std::string>>(
-    "blue_robots", create_robots_str("blue"), [this, set_robots](const auto & param) {
-      set_robots(blue_, param.as_string_array(), false);
-    });
-  yellow_.robots_param_subscription = node_->create_subscription<ParameterMsg>(
-    "yellow_robots", this->get_static_qos(), 
-    [this, set_robots](ParameterMsg::ConstSharedPtr robots_param_msg){
-      set_robots(yellow_, robots_param_msg->string_array_value, true);
-    });
-  blue_.robots_param_subscription = node_->create_subscription<ParameterMsg>(
-    "blue_robots", this->get_static_qos(), 
-    [this, set_robots](ParameterMsg::ConstSharedPtr robots_param_msg){
-      set_robots(blue_, robots_param_msg->string_array_value, false);
-    });
+  initialize_robots("yellow", yellow_, true);
+  initialize_robots("blue", blue_, false);
 }
 
 void SenderNode::send()
 {
   const auto now = node_->now();
   const double stamp = now.nanoseconds() * 0.001 * 0.001 * 0.001;
-  auto send_packet = [now, stamp, this](TeamData & data) {
-      data.packet.mutable_commands()->set_timestamp(stamp);
-      for(auto& robot_subscriber_node : data.robot_subscriber_nodes) {
+  auto send_packet = [now, stamp, this](TeamData & team_data) {
+      team_data.packet.mutable_commands()->set_timestamp(stamp);
+      for (auto & robot_subscriber_node : team_data.robot_subscriber_nodes) {
         robot_subscriber_node.update_validity(now);
       }
-      const auto data_str = data.packet.SerializeAsString();
+      const auto data_str = team_data.packet.SerializeAsString();
       udp_socket_.writeDatagram(data_str.data(), data_str.size(), udp_gr_sim_address_, udp_port_);
     };
   auto clear_replacement = [](auto & packet) {
@@ -131,6 +111,31 @@ void SenderNode::send()
   send_packet(blue_);
   clear_replacement(yellow_.packet);
   clear_replacement(blue_.packet);
+}
+
+void SenderNode::set_robot_nodes(
+  TeamData * team_data, const ParameterMsg & param_msg,
+  bool team_is_yellow)
+{
+  if (param_msg.type != 9) {
+    RCLCPP_WARN(node_->get_logger(), "invalid parameter type(parameter should be string_array)");
+    return;
+  }
+  team_data->robot_subscriber_nodes.clear();
+  int robot_id = 0;
+  const auto commands = team_data->packet.mutable_commands();
+  const auto replacement = team_data->packet.mutable_replacement();
+  for (const auto & robot_str : param_msg.string_array_value) {
+    if (robot_str == "") {
+      continue;
+    }
+    const auto robot_command = commands->add_robot_commands();
+    robot_command->set_id(robot_id);
+    team_data->robot_subscriber_nodes.emplace_back(
+      robot_command, replacement, team_is_yellow,
+      node_->create_sub_node(robot_str));
+    ++robot_id;
+  }
 }
 
 }  // namespace kiks::gr_sim_bridge

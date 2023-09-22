@@ -58,9 +58,9 @@ public:
     grSim_Replacement * const replacement,
     bool team_is_yellow, rclcpp::Node::SharedPtr node);
 
-  inline void update_validity() { update_validity(node_->now()); }
+  inline void update_validity() {update_validity(node_->now());}
 
-  void update_validity(const rclcpp::Time& now);
+  void update_validity(const rclcpp::Time & now);
 
 private:
   using TwistMsg = geometry_msgs::msg::Twist;

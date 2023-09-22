@@ -58,6 +58,8 @@ private:
 
   void send();
 
+  void set_robot_nodes(TeamData * team_data, const ParameterMsg & param_msg, bool team_is_yellow);
+
   QUdpSocket udp_socket_;
   QHostAddress udp_gr_sim_address_;
   quint16 udp_port_;

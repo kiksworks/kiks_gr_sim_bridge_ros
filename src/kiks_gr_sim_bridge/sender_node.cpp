@@ -102,10 +102,14 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
 
 void SenderNode::send()
 {
-  const double stamp = node_->now().nanoseconds() * 0.001 * 0.001 * 0.001;
-  auto send_packet = [stamp, this](auto & packet) {
-      packet.mutable_commands()->set_timestamp(stamp);
-      const auto data_str = packet.SerializeAsString();
+  const auto now = node_->now();
+  const double stamp = now.nanoseconds() * 0.001 * 0.001 * 0.001;
+  auto send_packet = [now, stamp, this](TeamData & data) {
+      data.packet.mutable_commands()->set_timestamp(stamp);
+      for(auto& robot_subscriber_node : data.robot_subscriber_nodes) {
+        robot_subscriber_node.update_validity(now);
+      }
+      const auto data_str = data.packet.SerializeAsString();
       udp_socket_.writeDatagram(data_str.data(), data_str.size(), udp_gr_sim_address_, udp_port_);
     };
   auto clear_replacement = [](auto & packet) {
@@ -113,8 +117,8 @@ void SenderNode::send()
       replacement->clear_ball();
       replacement->clear_robots();
     };
-  send_packet(yellow_.packet);
-  send_packet(blue_.packet);
+  send_packet(yellow_);
+  send_packet(blue_);
   clear_replacement(yellow_.packet);
   clear_replacement(blue_.packet);
 }

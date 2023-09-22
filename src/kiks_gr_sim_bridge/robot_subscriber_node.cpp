@@ -62,6 +62,12 @@ RobotSubscriberNode::RobotSubscriberNode(
   command_(command),
   replacement_(replacement)
 {
+  // Parameter of vel valid duration[s]
+  this->add_parameter<double>(
+    "vel_valid_duration", 0.5, [this](const auto & param) {
+      vel_valid_duration_ =
+      std::chrono::nanoseconds(static_cast<std::size_t>(param.as_double() * 1000 * 1000 * 1000));
+    });
   // Parameter of kick valid duration[s]
   this->add_parameter<double>(
     "kick_valid_duration", 0.5, [this](const auto & param) {
@@ -106,11 +112,17 @@ RobotSubscriberNode::RobotSubscriberNode(
     std::bind(
       team_is_yellow ? &RobotSubscriberNode::subscribe_initialpose<true> : &
       RobotSubscriberNode::subscribe_initialpose<false>, this, std::placeholders::_1));
+  vel_valid_time_ = kick_valid_time_ = node_->now();
 }
 
-void RobotSubscriberNode::update_validity()
+void RobotSubscriberNode::update_validity(const rclcpp::Time& now)
 {
-  if (node_->now() < kick_valid_time_) {
+  if(now > vel_valid_time_) {
+    command_->set_veltangent(0);
+    command_->set_velnormal(0);
+    command_->set_velangular(0);
+  }
+  if (now > kick_valid_time_) {
     command_->set_kickspeedx(0);
     command_->set_kickspeedz(0);
   }
@@ -118,10 +130,9 @@ void RobotSubscriberNode::update_validity()
 
 void RobotSubscriberNode::subscribe_cmd_vel(TwistMsg::ConstSharedPtr cmd_vel_msg)
 {
-  command_->set_veltangent(
-    cmd_vel_msg->linear.x == 0 ?
-    1 : (cmd_vel_msg->linear.y / cmd_vel_msg->linear.x));
-  command_->set_velnormal(std::hypot(cmd_vel_msg->linear.x, cmd_vel_msg->linear.y));
+  vel_valid_time_ = node_->now() + vel_valid_duration_;
+  command_->set_veltangent(cmd_vel_msg->linear.x);
+  command_->set_velnormal(cmd_vel_msg->linear.y);
   command_->set_velangular(cmd_vel_msg->angular.z);
 }
 

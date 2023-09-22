@@ -58,7 +58,9 @@ public:
     grSim_Replacement * const replacement,
     bool team_is_yellow, rclcpp::Node::SharedPtr node);
 
-  void update_validity();
+  inline void update_validity() { update_validity(node_->now()); }
+
+  void update_validity(const rclcpp::Time& now);
 
 private:
   using TwistMsg = geometry_msgs::msg::Twist;
@@ -79,8 +81,8 @@ private:
   grSim_Robot_Command * const command_;
   grSim_Replacement * const replacement_;
   double chip_kick_coef_x_, chip_kick_coef_z_;
-  std::chrono::nanoseconds kick_valid_duration_;
-  rclcpp::Time kick_valid_time_;
+  std::chrono::nanoseconds vel_valid_duration_, kick_valid_duration_;
+  rclcpp::Time vel_valid_time_, kick_valid_time_;
   rclcpp::Subscription<TwistMsg>::SharedPtr cmd_vel_subscription_;
   rclcpp::Subscription<JointMsg>::SharedPtr cmd_flat_kick_subscription_,
     cmd_chip_kick_subscription_, cmd_spinner_subscription_;

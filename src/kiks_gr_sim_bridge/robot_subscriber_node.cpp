@@ -23,44 +23,36 @@ namespace kiks::gr_sim_bridge
 {
 
 RobotSubscriberNode::RobotSubscriberNode(
-  grSim_Robot_Command * const command,
-  grSim_Replacement * const replacement,
-  bool team_is_yellow,
+  const RobotInfo& robot_info,
   const rclcpp::NodeOptions & options)
-: RobotSubscriberNode(command, replacement, team_is_yellow,
+: RobotSubscriberNode(robot_info,
     std::make_shared<rclcpp::Node>(this->default_name(), options))
 {
 }
 
 RobotSubscriberNode::RobotSubscriberNode(
-  grSim_Robot_Command * const command,
-  grSim_Replacement * const replacement,
-  bool team_is_yellow,
+  const RobotInfo& robot_info,
   const std::string & node_name,
   const rclcpp::NodeOptions & options)
-: RobotSubscriberNode(command, replacement, team_is_yellow,
+: RobotSubscriberNode(robot_info,
     std::make_shared<rclcpp::Node>(node_name, options))
 {
 }
 
 RobotSubscriberNode::RobotSubscriberNode(
-  grSim_Robot_Command * const command, grSim_Replacement * const replacement,
-  bool team_is_yellow,
+  const RobotInfo& robot_info,
   const std::string & node_name, const std::string & node_namespace,
   const rclcpp::NodeOptions & options)
-: RobotSubscriberNode(command, replacement, team_is_yellow,
+: RobotSubscriberNode(robot_info,
     std::make_shared<rclcpp::Node>(node_name, node_namespace, options))
 {
 }
 
 RobotSubscriberNode::RobotSubscriberNode(
-  grSim_Robot_Command * const command,
-  grSim_Replacement * const replacement,
-  bool team_is_yellow,
+  const RobotInfo& robot_info,
   rclcpp::Node::SharedPtr node)
 : RosNodeBase(std::move(node)),
-  command_(command),
-  replacement_(replacement)
+  robot_info_(robot_info)
 {
   // Parameter of vel valid duration[s]
   this->add_parameter<double>(
@@ -82,13 +74,13 @@ RobotSubscriberNode::RobotSubscriberNode(
       chip_kick_coef_z_ = std::sin(angle);
     });
   // Initialize command
-  command_->set_kickspeedx(0);
-  command_->set_kickspeedz(0);
-  command_->set_veltangent(0);
-  command_->set_velnormal(0);
-  command_->set_velangular(0);
-  command_->set_spinner(false);
-  command_->set_wheelsspeed(false);
+  robot_info_.command->set_kickspeedx(0);
+  robot_info_.command->set_kickspeedz(0);
+  robot_info_.command->set_veltangent(0);
+  robot_info_.command->set_velnormal(0);
+  robot_info_.command->set_velangular(0);
+  robot_info_.command->set_spinner(false);
+  robot_info_.command->set_wheelsspeed(false);
   // Initialize subscriptions
   cmd_vel_subscription_ = node_->create_subscription<TwistMsg>(
     "cmd_vel",
@@ -109,62 +101,60 @@ RobotSubscriberNode::RobotSubscriberNode(
   initialpose_subscription_ = node_->create_subscription<PoseMsg>(
     "initialpose",
     this->get_dynamic_qos(),
-    std::bind(
-      team_is_yellow ? &RobotSubscriberNode::subscribe_initialpose<true> : &
-      RobotSubscriberNode::subscribe_initialpose<false>, this, std::placeholders::_1));
+    std::bind(&RobotSubscriberNode::subscribe_initialpose, this, std::placeholders::_1));
   vel_valid_time_ = kick_valid_time_ = node_->now();
 }
 
 void RobotSubscriberNode::update_validity(const rclcpp::Time & now)
 {
   if (now > vel_valid_time_) {
-    command_->set_veltangent(0);
-    command_->set_velnormal(0);
-    command_->set_velangular(0);
+    robot_info_.command->set_veltangent(0);
+    robot_info_.command->set_velnormal(0);
+    robot_info_.command->set_velangular(0);
   }
   if (now > kick_valid_time_) {
-    command_->set_kickspeedx(0);
-    command_->set_kickspeedz(0);
+    robot_info_.command->set_kickspeedx(0);
+    robot_info_.command->set_kickspeedz(0);
   }
 }
 
 void RobotSubscriberNode::subscribe_cmd_vel(TwistMsg::ConstSharedPtr cmd_vel_msg)
 {
   vel_valid_time_ = node_->now() + vel_valid_duration_;
-  command_->set_veltangent(cmd_vel_msg->linear.x);
-  command_->set_velnormal(cmd_vel_msg->linear.y);
-  command_->set_velangular(cmd_vel_msg->angular.z);
+  robot_info_.command->set_veltangent(cmd_vel_msg->linear.x);
+  robot_info_.command->set_velnormal(cmd_vel_msg->linear.y);
+  robot_info_.command->set_velangular(cmd_vel_msg->angular.z);
 }
 
 void RobotSubscriberNode::subscribe_cmd_flat_kick(JointMsg::ConstSharedPtr cmd_flat_kick_msg)
 {
   kick_valid_time_ = node_->now() + kick_valid_duration_;
-  command_->set_kickspeedx(cmd_flat_kick_msg->velocity);
-  command_->set_kickspeedz(0);
+  robot_info_.command->set_kickspeedx(cmd_flat_kick_msg->velocity);
+  robot_info_.command->set_kickspeedz(0);
 }
 
 void RobotSubscriberNode::subscribe_cmd_chip_kick(JointMsg::ConstSharedPtr cmd_chip_kick_msg)
 {
   kick_valid_time_ = node_->now() + kick_valid_duration_;
-  command_->set_kickspeedx(cmd_chip_kick_msg->velocity * chip_kick_coef_x_);
-  command_->set_kickspeedz(cmd_chip_kick_msg->velocity * chip_kick_coef_z_);
+  robot_info_.command->set_kickspeedx(cmd_chip_kick_msg->velocity * chip_kick_coef_x_);
+  robot_info_.command->set_kickspeedz(cmd_chip_kick_msg->velocity * chip_kick_coef_z_);
 }
 
 
 void RobotSubscriberNode::subscribe_cmd_spinner(JointMsg::ConstSharedPtr cmd_spinner_msg)
 {
-  command_->set_spinner(cmd_spinner_msg->velocity > 0);
+  robot_info_.command->set_spinner(cmd_spinner_msg->velocity > 0);
 }
 
-template<bool kTeamIsYellow>
 void RobotSubscriberNode::subscribe_initialpose(PoseMsg::ConstSharedPtr initialpose_msg)
 {
-  auto robot = replacement_->add_robots();
+  auto robot = robot_info_.replacement->add_robots();
   const auto & pose = initialpose_msg->pose.pose;
   robot->set_x(pose.position.x);
   robot->set_y(pose.position.y);
-  robot->set_dir(std::atan2(pose.orientation.z, pose.orientation.w));
-  robot->set_yellowteam(kTeamIsYellow);
+  robot->set_dir(std::atan2(pose.orientation.z, pose.orientation.w) * (2 * 180.0 / std::acos(-1.0)));
+  robot->set_yellowteam(robot_info_.team_is_yellow);
+  robot->set_id(robot_info_.robot_id);
 }
 
 }  // namespace kiks::gr_sim_bridge

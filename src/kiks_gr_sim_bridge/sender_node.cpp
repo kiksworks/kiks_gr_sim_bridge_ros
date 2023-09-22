@@ -131,9 +131,13 @@ void SenderNode::set_robot_nodes(
     }
     const auto robot_command = commands->add_robot_commands();
     robot_command->set_id(robot_id);
+    RobotSubscriberNode::RobotInfo robot_info;
+    robot_info.command = robot_command;
+    robot_info.replacement = replacement;
+    robot_info.team_is_yellow = team_is_yellow;
+    robot_info.robot_id = robot_id;
     team_data->robot_subscriber_nodes.emplace_back(
-      robot_command, replacement, team_is_yellow,
-      node_->create_sub_node(robot_str));
+      robot_info, node_->create_sub_node(robot_str));
     ++robot_id;
   }
 }

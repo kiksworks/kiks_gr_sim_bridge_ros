@@ -98,6 +98,16 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
     "blue_robots", create_robots_str("blue"), [this, set_robots](const auto & param) {
       set_robots(blue_, param.as_string_array(), false);
     });
+  yellow_.robots_param_subscription = node_->create_subscription<ParameterMsg>(
+    "yellow_robots", this->get_static_qos(), 
+    [this, set_robots](ParameterMsg::ConstSharedPtr robots_param_msg){
+      set_robots(yellow_, robots_param_msg->string_array_value, true);
+    });
+  blue_.robots_param_subscription = node_->create_subscription<ParameterMsg>(
+    "blue_robots", this->get_static_qos(), 
+    [this, set_robots](ParameterMsg::ConstSharedPtr robots_param_msg){
+      set_robots(blue_, robots_param_msg->string_array_value, false);
+    });
 }
 
 void SenderNode::send()

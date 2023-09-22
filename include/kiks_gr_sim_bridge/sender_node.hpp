@@ -47,10 +47,13 @@ public:
   explicit SenderNode(rclcpp::Node::SharedPtr node);
 
 private:
+  using ParameterMsg = rcl_interfaces::msg::ParameterValue;
+
   struct TeamData
   {
     grSim_Packet packet;
     std::list<RobotSubscriberNode> robot_subscriber_nodes;
+    rclcpp::Subscription<ParameterMsg>::SharedPtr robots_param_subscription;
   };
 
   void send();

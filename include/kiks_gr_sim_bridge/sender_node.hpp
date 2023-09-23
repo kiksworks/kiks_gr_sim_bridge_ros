@@ -19,14 +19,15 @@
 
 #include <string>
 #include <list>
+#include <memory>
 
 #include "QNetworkInterface"
 #include "QUdpSocket"
 
+#include "grSim_Packet.pb.h"
 #include "kiks_gr_sim_bridge/ros_node_base.hpp"
 #include "kiks_gr_sim_bridge/ball_subscriber_node.hpp"
 #include "kiks_gr_sim_bridge/robot_subscriber_node.hpp"
-#include "grSim_Packet.pb.h"
 
 namespace kiks::gr_sim_bridge
 {

@@ -73,7 +73,9 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
       // set commnad team_color
       team_data.packet.mutable_commands()->set_isteamyellow(team_is_yellow);
       // Parameter of robot nodes
-      // Default is {"${teamcolor}00, ${teamcolor}01 ... "${teamcolor}14", "${teamcolor}15"} for each team
+      // Default is
+      // {"${teamcolor}00", "${teamcolor}01" ... "${teamcolor}14", "${teamcolor}15"}
+      // for each team
       this->add_parameter<std::vector<std::string>>(
         team_str + "_robots", default_robot_strs,
         [this, &team_data, team_is_yellow](const auto & param) {

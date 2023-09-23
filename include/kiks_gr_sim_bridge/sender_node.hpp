@@ -24,6 +24,7 @@
 #include "QUdpSocket"
 
 #include "kiks_gr_sim_bridge/ros_node_base.hpp"
+#include "kiks_gr_sim_bridge/ball_subscriber_node.hpp"
 #include "kiks_gr_sim_bridge/robot_subscriber_node.hpp"
 #include "grSim_Packet.pb.h"
 
@@ -63,7 +64,10 @@ private:
   QUdpSocket udp_socket_;
   QHostAddress udp_gr_sim_address_;
   quint16 udp_port_;
+  grSim_Packet replacement_packet_;
+  bool has_replacement_;
   TeamData yellow_, blue_;
+  std::unique_ptr<BallSubscriberNode> ball_subscriber_node_;
   rclcpp::TimerBase::SharedPtr sending_timer_;
 };
 

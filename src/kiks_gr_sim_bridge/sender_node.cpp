@@ -88,6 +88,19 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
     };
   initialize_robots("yellow", yellow_, true);
   initialize_robots("blue", blue_, false);
+  this->add_parameter<bool>(
+    "ball.enable", true, [this](const auto & param) {
+      if (param.as_bool()) {
+        BallSubscriberNode::BallInfo ball_info;
+        ball_info.replacement = replacement_packet_.mutable_replacement();
+        ball_info.has_replacement = &has_replacement_;
+        ball_subscriber_node_ = std::make_unique<BallSubscriberNode>(
+          ball_info, node_->create_sub_node("ball"));
+      } else {
+        ball_subscriber_node_.reset();
+      }
+    });
+  has_replacement_ = false;
 }
 
 void SenderNode::send()
@@ -102,15 +115,18 @@ void SenderNode::send()
       const auto data_str = team_data.packet.SerializeAsString();
       udp_socket_.writeDatagram(data_str.data(), data_str.size(), udp_gr_sim_address_, udp_port_);
     };
-  auto clear_replacement = [](auto & packet) {
-      const auto replacement = packet.mutable_replacement();
-      replacement->clear_ball();
-      replacement->clear_robots();
-    };
   send_packet(yellow_);
   send_packet(blue_);
-  clear_replacement(yellow_.packet);
-  clear_replacement(blue_.packet);
+  if (has_replacement_) {
+    const auto replacement_data_str = replacement_packet_.SerializeAsString();
+    udp_socket_.writeDatagram(
+      replacement_data_str.data(),
+      replacement_data_str.size(), udp_gr_sim_address_, udp_port_);
+    const auto replacement_ = replacement_packet_.mutable_replacement();
+    replacement_->clear_ball();
+    replacement_->clear_robots();
+    has_replacement_ = false;
+  }
 }
 
 void SenderNode::set_robot_nodes(
@@ -124,7 +140,7 @@ void SenderNode::set_robot_nodes(
   team_data->robot_subscriber_nodes.clear();
   int robot_id = 0;
   const auto commands = team_data->packet.mutable_commands();
-  const auto replacement = team_data->packet.mutable_replacement();
+  const auto replacement = replacement_packet_.mutable_replacement();
   for (const auto & robot_str : param_msg.string_array_value) {
     if (robot_str == "") {
       continue;
@@ -134,6 +150,7 @@ void SenderNode::set_robot_nodes(
     RobotSubscriberNode::RobotInfo robot_info;
     robot_info.command = robot_command;
     robot_info.replacement = replacement;
+    robot_info.has_replacement = &has_replacement_;
     robot_info.team_is_yellow = team_is_yellow;
     robot_info.robot_id = robot_id;
     team_data->robot_subscriber_nodes.emplace_back(

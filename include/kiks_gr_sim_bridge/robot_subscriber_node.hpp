@@ -38,6 +38,7 @@ public:
   {
     grSim_Robot_Command * command;
     grSim_Replacement * replacement;
+    bool * has_replacement;
     bool team_is_yellow;
     int robot_id;
   };
@@ -45,20 +46,20 @@ public:
   inline static std::string default_name() {return "gr_sim_bridge_robot_subuscriber";}
 
   explicit RobotSubscriberNode(
-    const RobotInfo& robot_info,
+    const RobotInfo & robot_info,
     const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
   RobotSubscriberNode(
-    const RobotInfo& robot_info,
+    const RobotInfo & robot_info,
     const std::string & node_name, const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
   RobotSubscriberNode(
-    const RobotInfo& robot_info,
+    const RobotInfo & robot_info,
     const std::string & node_name, const std::string & node_namespace,
     const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
   explicit RobotSubscriberNode(
-    const RobotInfo& robot_info, rclcpp::Node::SharedPtr node);
+    const RobotInfo & robot_info, rclcpp::Node::SharedPtr node);
 
   inline void update_validity() {update_validity(node_->now());}
 

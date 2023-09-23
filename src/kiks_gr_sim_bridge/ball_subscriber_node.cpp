@@ -20,7 +20,7 @@ namespace kiks::gr_sim_bridge
 {
 
 BallSubscriberNode::BallSubscriberNode(
-  const BallInfo& ball_info,
+  const BallInfo & ball_info,
   const rclcpp::NodeOptions & options)
 : BallSubscriberNode(ball_info,
     std::make_shared<rclcpp::Node>(this->default_name(), options))
@@ -28,7 +28,7 @@ BallSubscriberNode::BallSubscriberNode(
 }
 
 BallSubscriberNode::BallSubscriberNode(
-  const BallInfo& ball_info,
+  const BallInfo & ball_info,
   const std::string & node_name,
   const rclcpp::NodeOptions & options)
 : BallSubscriberNode(ball_info,
@@ -37,7 +37,7 @@ BallSubscriberNode::BallSubscriberNode(
 }
 
 BallSubscriberNode::BallSubscriberNode(
-  const BallInfo& ball_info,
+  const BallInfo & ball_info,
   const std::string & node_name, const std::string & node_namespace,
   const rclcpp::NodeOptions & options)
 : BallSubscriberNode(ball_info,
@@ -46,7 +46,7 @@ BallSubscriberNode::BallSubscriberNode(
 }
 
 BallSubscriberNode::BallSubscriberNode(
-  const BallInfo& ball_info,
+  const BallInfo & ball_info,
   rclcpp::Node::SharedPtr node)
 : RosNodeBase(std::move(node)),
   ball_info_(ball_info)
@@ -66,6 +66,7 @@ void BallSubscriberNode::subscribe_initialpose(PoseMsg::ConstSharedPtr initialpo
   ball->set_y(pose.position.y);
   ball->set_vx(0);
   ball->set_vy(0);
+  *ball_info_.has_replacement = true;
 }
 
 }  // namespace kiks::gr_sim_bridge

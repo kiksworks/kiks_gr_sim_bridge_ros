@@ -23,7 +23,7 @@ namespace kiks::gr_sim_bridge
 {
 
 RobotSubscriberNode::RobotSubscriberNode(
-  const RobotInfo& robot_info,
+  const RobotInfo & robot_info,
   const rclcpp::NodeOptions & options)
 : RobotSubscriberNode(robot_info,
     std::make_shared<rclcpp::Node>(this->default_name(), options))
@@ -31,7 +31,7 @@ RobotSubscriberNode::RobotSubscriberNode(
 }
 
 RobotSubscriberNode::RobotSubscriberNode(
-  const RobotInfo& robot_info,
+  const RobotInfo & robot_info,
   const std::string & node_name,
   const rclcpp::NodeOptions & options)
 : RobotSubscriberNode(robot_info,
@@ -40,7 +40,7 @@ RobotSubscriberNode::RobotSubscriberNode(
 }
 
 RobotSubscriberNode::RobotSubscriberNode(
-  const RobotInfo& robot_info,
+  const RobotInfo & robot_info,
   const std::string & node_name, const std::string & node_namespace,
   const rclcpp::NodeOptions & options)
 : RobotSubscriberNode(robot_info,
@@ -49,7 +49,7 @@ RobotSubscriberNode::RobotSubscriberNode(
 }
 
 RobotSubscriberNode::RobotSubscriberNode(
-  const RobotInfo& robot_info,
+  const RobotInfo & robot_info,
   rclcpp::Node::SharedPtr node)
 : RosNodeBase(std::move(node)),
   robot_info_(robot_info)
@@ -152,9 +152,13 @@ void RobotSubscriberNode::subscribe_initialpose(PoseMsg::ConstSharedPtr initialp
   const auto & pose = initialpose_msg->pose.pose;
   robot->set_x(pose.position.x);
   robot->set_y(pose.position.y);
-  robot->set_dir(std::atan2(pose.orientation.z, pose.orientation.w) * (2 * 180.0 / std::acos(-1.0)));
+  robot->set_dir(
+    std::atan2(
+      pose.orientation.z,
+      pose.orientation.w) * (2 * 180.0 / std::acos(-1.0)));
   robot->set_yellowteam(robot_info_.team_is_yellow);
   robot->set_id(robot_info_.robot_id);
+  *robot_info_.has_replacement = true;
 }
 
 }  // namespace kiks::gr_sim_bridge

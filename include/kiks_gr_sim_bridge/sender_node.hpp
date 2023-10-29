@@ -25,14 +25,14 @@
 #include "QUdpSocket"
 
 #include "grSim_Packet.pb.h"
-#include "kiks_gr_sim_bridge/ros_node_base.hpp"
+#include "kiks_gr_sim_bridge/expanded_node.hpp"
 #include "kiks_gr_sim_bridge/ball_subscriber_node.hpp"
 #include "kiks_gr_sim_bridge/robot_subscriber_node.hpp"
 
 namespace kiks::gr_sim_bridge
 {
 
-class SenderNode : public RosNodeBase
+class SenderNode : public ExpandedNode
 {
 public:
   static std::string default_name();

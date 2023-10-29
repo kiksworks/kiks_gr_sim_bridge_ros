@@ -48,11 +48,11 @@ BallSubscriberNode::BallSubscriberNode(
 BallSubscriberNode::BallSubscriberNode(
   const BallInfo & ball_info,
   rclcpp::Node::SharedPtr node)
-: RosNodeBase(std::move(node)),
+: ExpandedSubNode(std::move(node)),
   ball_info_(ball_info)
 {
   // Initialize subscription
-  initialpose_subscription_ = node_->create_subscription<PoseMsg>(
+  initialpose_subscription_ = (*this)->create_subscription<PoseMsg>(
     "initialpose",
     this->get_dynamic_qos(),
     std::bind(&BallSubscriberNode::subscribe_initialpose, this, std::placeholders::_1));

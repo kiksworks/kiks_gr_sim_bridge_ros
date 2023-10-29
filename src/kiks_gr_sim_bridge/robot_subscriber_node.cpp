@@ -51,25 +51,25 @@ RobotSubscriberNode::RobotSubscriberNode(
 RobotSubscriberNode::RobotSubscriberNode(
   const RobotInfo & robot_info,
   rclcpp::Node::SharedPtr node)
-: RosNodeBase(std::move(node)),
+: ExpandedSubNode(std::move(node)),
   robot_info_(robot_info)
 {
   // Parameter of vel valid duration[s]
-  this->add_parameter<double>(
-    "vel_valid_duration", 0.5, [this](const auto & param) {
+  this->add_param<double>(
+    "vel_valid_duration", 0.5, [this](double duration) {
       vel_valid_duration_ =
-      std::chrono::nanoseconds(static_cast<std::size_t>(param.as_double() * 1000 * 1000 * 1000));
+      std::chrono::nanoseconds(static_cast<std::size_t>(duration * 1000 * 1000 * 1000));
     });
   // Parameter of kick valid duration[s]
-  this->add_parameter<double>(
-    "kick_valid_duration", 0.5, [this](const auto & param) {
+  this->add_param<double>(
+    "kick_valid_duration", 0.5, [this](double duration) {
       kick_valid_duration_ =
-      std::chrono::nanoseconds(static_cast<std::size_t>(param.as_double() * 1000 * 1000 * 1000));
+      std::chrono::nanoseconds(static_cast<std::size_t>(duration * 1000 * 1000 * 1000));
     });
   // Parameter of chip kick angle[deg]
-  this->add_parameter<double>(
-    "chip_kick_deg", 60, [this](const auto & param) {
-      const auto angle = param.as_double() * (std::acos(-1.0) / 180.0);
+  this->add_param<double>(
+    "chip_kick_deg", 60, [this](double deg) {
+      const auto angle = deg * (std::acos(-1.0) / 180.0);
       chip_kick_coef_x_ = std::cos(angle);
       chip_kick_coef_z_ = std::sin(angle);
     });
@@ -82,27 +82,27 @@ RobotSubscriberNode::RobotSubscriberNode(
   robot_info_.command->set_spinner(false);
   robot_info_.command->set_wheelsspeed(false);
   // Initialize subscriptions
-  cmd_vel_subscription_ = node_->create_subscription<TwistMsg>(
+  cmd_vel_subscription_ = (*this)->create_subscription<TwistMsg>(
     "cmd_vel",
     this->get_dynamic_qos(),
     std::bind(&RobotSubscriberNode::subscribe_cmd_vel, this, std::placeholders::_1));
-  cmd_flat_kick_subscription_ = node_->create_subscription<JointMsg>(
+  cmd_flat_kick_subscription_ = (*this)->create_subscription<JointMsg>(
     "cmd_flat_kick",
     this->get_dynamic_qos(),
     std::bind(&RobotSubscriberNode::subscribe_cmd_flat_kick, this, std::placeholders::_1));
-  cmd_chip_kick_subscription_ = node_->create_subscription<JointMsg>(
+  cmd_chip_kick_subscription_ = (*this)->create_subscription<JointMsg>(
     "cmd_chip_kick",
     this->get_dynamic_qos(),
     std::bind(&RobotSubscriberNode::subscribe_cmd_chip_kick, this, std::placeholders::_1));
-  cmd_spinner_subscription_ = node_->create_subscription<JointMsg>(
+  cmd_spinner_subscription_ = (*this)->create_subscription<JointMsg>(
     "cmd_spinner",
     this->get_dynamic_qos(),
     std::bind(&RobotSubscriberNode::subscribe_cmd_spinner, this, std::placeholders::_1));
-  initialpose_subscription_ = node_->create_subscription<PoseMsg>(
+  initialpose_subscription_ = (*this)->create_subscription<PoseMsg>(
     "initialpose",
     this->get_dynamic_qos(),
     std::bind(&RobotSubscriberNode::subscribe_initialpose, this, std::placeholders::_1));
-  vel_valid_time_ = kick_valid_time_ = node_->now();
+  vel_valid_time_ = kick_valid_time_ = (*this)->now();
 }
 
 void RobotSubscriberNode::update_validity(const rclcpp::Time & now)
@@ -120,7 +120,7 @@ void RobotSubscriberNode::update_validity(const rclcpp::Time & now)
 
 void RobotSubscriberNode::subscribe_cmd_vel(TwistMsg::ConstSharedPtr cmd_vel_msg)
 {
-  vel_valid_time_ = node_->now() + vel_valid_duration_;
+  vel_valid_time_ = (*this)->now() + vel_valid_duration_;
   robot_info_.command->set_veltangent(cmd_vel_msg->linear.x);
   robot_info_.command->set_velnormal(cmd_vel_msg->linear.y);
   robot_info_.command->set_velangular(cmd_vel_msg->angular.z);
@@ -128,14 +128,14 @@ void RobotSubscriberNode::subscribe_cmd_vel(TwistMsg::ConstSharedPtr cmd_vel_msg
 
 void RobotSubscriberNode::subscribe_cmd_flat_kick(JointMsg::ConstSharedPtr cmd_flat_kick_msg)
 {
-  kick_valid_time_ = node_->now() + kick_valid_duration_;
+  kick_valid_time_ = (*this)->now() + kick_valid_duration_;
   robot_info_.command->set_kickspeedx(cmd_flat_kick_msg->velocity);
   robot_info_.command->set_kickspeedz(0);
 }
 
 void RobotSubscriberNode::subscribe_cmd_chip_kick(JointMsg::ConstSharedPtr cmd_chip_kick_msg)
 {
-  kick_valid_time_ = node_->now() + kick_valid_duration_;
+  kick_valid_time_ = (*this)->now() + kick_valid_duration_;
   robot_info_.command->set_kickspeedx(cmd_chip_kick_msg->velocity * chip_kick_coef_x_);
   robot_info_.command->set_kickspeedz(cmd_chip_kick_msg->velocity * chip_kick_coef_z_);
 }

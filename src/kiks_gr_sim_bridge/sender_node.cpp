@@ -22,43 +22,38 @@ namespace kiks::gr_sim_bridge
 {
 
 SenderNode::SenderNode(const rclcpp::NodeOptions & options)
-: SenderNode(std::make_shared<rclcpp::Node>("gr_sim_bridge", options))
+: SenderNode("gr_sim_bridge", "/", options)
 {
 }
 
 SenderNode::SenderNode(const std::string & node_name, const rclcpp::NodeOptions & options)
-: SenderNode(std::make_shared<rclcpp::Node>(node_name, options))
+: SenderNode(node_name, "/", options)
 {
 }
 
 SenderNode::SenderNode(
   const std::string & node_name, const std::string & node_namespace,
   const rclcpp::NodeOptions & options)
-: SenderNode(std::make_shared<rclcpp::Node>(node_name, node_namespace, options))
-{
-}
-
-SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
-: RosNodeBase(std::move(node))
+: ExpandedNode(node_name, node_namespace, options)
 {
   // Parameter of ssl-vision udp port
-  this->add_parameter<std::int64_t>(
-    "udp.port", 20011, [this](const auto & param) {
-      udp_port_ = param.as_int();
+  this->add_param<std::int64_t>(
+    "udp.port", 20011, [this](std::int64_t port) {
+      udp_port_ = port;
     });
   // Parameter of ssl-vision udp multicast ip
-  this->add_parameter<std::string>(
-    "udp.gr_sim_address", "127.0.0.1", [this](const auto & param) {
-      udp_gr_sim_address_ = QHostAddress(param.as_string().c_str());
+  this->add_param<std::string>(
+    "udp.gr_sim_address", "127.0.0.1", [this](const std::string & address) {
+      udp_gr_sim_address_ = QHostAddress(address.c_str());
     });
   // Parameter of sending_timer update frequency[hz]
-  this->add_parameter<double>(
-    "sending_freq", 60.0, [this](const auto & param) {
+  this->add_param<double>(
+    "sending_freq", 60.0, [this](double hz) {
       std::chrono::nanoseconds sending_duration(
         static_cast<int>(1000.0 * 1000.0 * 1000.0 /
-        param.as_double()));
+        hz));
       sending_timer_ =
-      node_->create_wall_timer(sending_duration, std::bind(&SenderNode::send, this));
+      this->create_wall_timer(sending_duration, std::bind(&SenderNode::send, this));
     });
   // initialize robots by initializer func
   auto initialize_robots =
@@ -76,13 +71,13 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
       // Default is
       // {"${teamcolor}00", "${teamcolor}01" ... "${teamcolor}14", "${teamcolor}15"}
       // for each team
-      this->add_parameter<std::vector<std::string>>(
+      this->add_param<std::vector<std::string>>(
         team_str + "_robots", default_robot_strs,
-        [this, &team_data, team_is_yellow](const auto & param) {
+        [this, &team_data, team_is_yellow](const rclcpp::Parameter & param) {
           set_robot_nodes(&team_data, param.get_value_message(), team_is_yellow);
         });
       // set robot nodes subscription
-      team_data.robots_param_subscription = node_->create_subscription<ParameterMsg>(
+      team_data.robots_param_subscription = this->create_subscription<ParameterMsg>(
         team_str + "_robots", this->get_static_qos(),
         [this, &team_data, team_is_yellow](ParameterMsg::ConstSharedPtr robots_param_msg) {
           set_robot_nodes(&team_data, *robots_param_msg, team_is_yellow);
@@ -90,14 +85,14 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
     };
   initialize_robots("yellow", yellow_, true);
   initialize_robots("blue", blue_, false);
-  this->add_parameter<bool>(
-    "ball.enable", true, [this](const auto & param) {
-      if (param.as_bool()) {
+  this->add_param<bool>(
+    "ball.enable", true, [this](bool enable) {
+      if (enable) {
         BallSubscriberNode::BallInfo ball_info;
         ball_info.replacement = replacement_packet_.mutable_replacement();
         ball_info.has_replacement = &has_replacement_;
         ball_subscriber_node_ = std::make_unique<BallSubscriberNode>(
-          ball_info, node_->create_sub_node("ball"));
+          ball_info, this->create_sub_node("ball"));
       } else {
         ball_subscriber_node_.reset();
       }
@@ -107,7 +102,7 @@ SenderNode::SenderNode(rclcpp::Node::SharedPtr node)
 
 void SenderNode::send()
 {
-  const auto now = node_->now();
+  const auto now = this->now();
   const double stamp = now.nanoseconds() * 0.001 * 0.001 * 0.001;
   auto send_packet = [now, stamp, this](TeamData & team_data) {
       team_data.packet.mutable_commands()->set_timestamp(stamp);
@@ -136,7 +131,7 @@ void SenderNode::set_robot_nodes(
   bool team_is_yellow)
 {
   if (param_msg.type != 9) {
-    RCLCPP_WARN(node_->get_logger(), "invalid parameter type(parameter should be string_array)");
+    RCLCPP_WARN(this->get_logger(), "invalid parameter type(parameter should be string_array)");
     return;
   }
   team_data->robot_subscriber_nodes.clear();
@@ -156,7 +151,7 @@ void SenderNode::set_robot_nodes(
     robot_info.team_is_yellow = team_is_yellow;
     robot_info.robot_id = robot_id;
     team_data->robot_subscriber_nodes.emplace_back(
-      robot_info, node_->create_sub_node(robot_str));
+      robot_info, this->create_sub_node(robot_str));
     ++robot_id;
   }
 }

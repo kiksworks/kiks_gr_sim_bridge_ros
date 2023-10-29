@@ -24,14 +24,14 @@
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "pendulum_msgs/msg/joint_state.hpp"
 
-#include "kiks_gr_sim_bridge/ros_node_base.hpp"
+#include "kiks_gr_sim_bridge/expanded_sub_node.hpp"
 #include "grSim_Commands.pb.h"
 #include "grSim_Replacement.pb.h"
 
 namespace kiks::gr_sim_bridge
 {
 
-class RobotSubscriberNode : public RosNodeBase
+class RobotSubscriberNode : public ExpandedSubNode
 {
 public:
   struct RobotInfo
@@ -61,7 +61,7 @@ public:
   explicit RobotSubscriberNode(
     const RobotInfo & robot_info, rclcpp::Node::SharedPtr node);
 
-  inline void update_validity() {update_validity(node_->now());}
+  inline void update_validity() {update_validity((*this)->now());}
 
   void update_validity(const rclcpp::Time & now);
 

@@ -23,7 +23,7 @@ int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
   rclcpp::executors::SingleThreadedExecutor exec;
-  kiks::gr_sim_bridge::SenderNode sender_node;
+  auto sender_node = std::make_shared<kiks::gr_sim_bridge::SenderNode>();
   exec.add_node(sender_node);
   exec.spin();
   rclcpp::shutdown();

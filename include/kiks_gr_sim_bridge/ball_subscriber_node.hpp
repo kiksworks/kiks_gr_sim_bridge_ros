@@ -22,12 +22,12 @@
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 
 #include "grSim_Replacement.pb.h"
-#include "kiks_gr_sim_bridge/ros_node_base.hpp"
+#include "kiks_gr_sim_bridge/expanded_sub_node.hpp"
 
 namespace kiks::gr_sim_bridge
 {
 
-class BallSubscriberNode : public RosNodeBase
+class BallSubscriberNode : public ExpandedSubNode
 {
 public:
   struct BallInfo

@@ -79,12 +79,12 @@ public:
           cmd_vel_timeout_callback_timer_ =
           (*this)->create_wall_timer(
             cmd_vel_timeout_duration_, [this, timeout_callback] {
-            timeout_callback();
-            --cmd_vel_timeout_callback_remaining_;
-            if (cmd_vel_timeout_callback_remaining_ <= 0) {
-              this->cmd_vel_timeout_callback_timer_.reset();
-            }
-          });
+              timeout_callback();
+              --cmd_vel_timeout_callback_remaining_;
+              if (cmd_vel_timeout_callback_remaining_ <= 0) {
+                this->cmd_vel_timeout_callback_timer_.reset();
+              }
+            });
           cmd_vel_timeout_callback_remaining_ = timeout_callback_count_;
         }
       });

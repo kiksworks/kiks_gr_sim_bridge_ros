@@ -60,22 +60,29 @@ SenderNode::SenderNode(
   // Parameter of robots[hz]
   robot_subscriber_nodes_map_[true];
   robot_subscriber_nodes_map_[false];
-  for (auto & [isteamyellow, robot_subscriber_nodes] : robot_subscriber_nodes_map_) {
-    std::string color = isteamyellow ? "yellow" : "blue";
-    this->add_param(
-      color + "_robots", this->create_robot_names(color),
-      [this, &robot_subscriber_nodes](const std::vector<std::string> & names) {
-        robot_subscriber_nodes.clear();
-        int id = 0;
-        for (const auto & name : names) {
-          if (name != "") {
-            robot_subscriber_nodes.emplace(id, this->create_sub_node(name));
-          }
-          ++id;
-        }
-      });
-    this->reset_subscriber_node_callbacks();
-  }
+  auto feature_robots_param_setter = [this] {
+      for (auto & [isteamyellow, robot_subscriber_nodes] : robot_subscriber_nodes_map_) {
+        std::string color = isteamyellow ? "yellow" : "blue";
+        this->add_param(
+          color + "_robots", this->create_robot_names(color),
+          [this, &robot_subscriber_nodes](const std::vector<std::string> & names) {
+            robot_subscriber_nodes.clear();
+            int id = 0;
+            for (const auto & name : names) {
+              if (name == "/") {
+                robot_subscriber_nodes.emplace(id, this->shared_from_this());
+              } else if (name != "") {
+                robot_subscriber_nodes.emplace(id, this->create_sub_node(name));
+              }
+              ++id;
+            }
+          });
+        this->reset_subscriber_node_callbacks();
+      }
+      param_setting_timer_.reset();
+    };
+  param_setting_timer_ = this->create_wall_timer(
+    std::chrono::nanoseconds::zero(), feature_robots_param_setter);
 }
 
 std::vector<std::string> SenderNode::create_robot_names(const std::string & name_base, int count)

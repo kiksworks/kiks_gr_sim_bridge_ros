@@ -106,7 +106,7 @@ private:
   BallSubscriberNode ball_subscriber_node_;
   std::list<grSim_Packet> cmds_packets_, replacement_packets_;
   // callback handler
-  rclcpp::TimerBase::SharedPtr sending_timer_;
+  rclcpp::TimerBase::SharedPtr sending_timer_, param_setting_timer_;
 };
 
 }  // namespace kiks::gr_sim_bridge

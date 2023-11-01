@@ -130,6 +130,8 @@ inline void SenderNode::reset_subscriber_node_callbacks()
         robot_command->set_id(id);
         robot_subscriber_node.set_cmd_vel_call_back([this, &packet, index](TwistMsg::ConstSharedPtr cmd_vel_msg) {
             this->write_cmd_vel_to_packet(*cmd_vel_msg, &packet, index);
+          }, [this, &packet, index] {
+            this->write_cmd_vel_to_packet(TwistMsg(), &packet, index);
           });
       }
     }
@@ -144,6 +146,8 @@ inline void SenderNode::reset_subscriber_node_callbacks()
         robot_command->set_id(id);
         robot_subscriber_node.set_cmd_vel_call_back([this, &packet](TwistMsg::ConstSharedPtr cmd_vel_msg) {
             this->write_cmd_vel_to_packet(*cmd_vel_msg, &packet);
+            this->send_packet(packet);
+          }, [this, packet] {
             this->send_packet(packet);
           });
       }

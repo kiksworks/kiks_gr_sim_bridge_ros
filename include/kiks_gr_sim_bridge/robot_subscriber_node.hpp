@@ -64,20 +64,42 @@ public:
 
   RobotSubscriberNode(rclcpp::Node::SharedPtr node);
   
+  template <class T, class U>
+  inline void set_cmd_vel_call_back(const T & call_back, const U timeout_callback)
+  {
+    auto timer_callback = [this, timeout_callback] {
+        timeout_callback();
+        this->cmd_vel_timeout_callback_timer_.reset();
+      };
+
+    if (cmd_vel_timeout_callback_timer_) {
+      cmd_vel_timeout_callback_timer_ = (*this)->create_wall_timer(cmd_vel_timeout_duration_, timer_callback);
+    }
+    
+    cmd_vel_subscription_ = (*this)->create_subscription<TwistMsg>("cmd_vel", this->get_dynamic_qos(), [call_back, timer_callback, this](TwistMsg::ConstSharedPtr cmd_vel) {
+        call_back(cmd_vel);
+        if(cmd_vel_timeout_callback_timer_) {
+          cmd_vel_timeout_callback_timer_->reset();
+        }
+        else {
+          cmd_vel_timeout_callback_timer_ = (*this)->create_wall_timer(cmd_vel_timeout_duration_, timer_callback);
+        }
+      });
+  }
+  
   template <class T>
   inline void set_cmd_vel_call_back(const T & call_back)
   {
-    call_back(TwistMsg::ConstSharedPtr());
-    cmd_vel_subscription_ = (*this)->create_subscription<TwistMsg>("cmd_vel", this->get_dynamic_qos(), [call_back, this](TwistMsg::ConstSharedPtr cmd_vel) {
-        call_back(cmd_vel);
-        // cmd_vel_timeout_handle_timer_->reset();
-      });
+    this->set_cmd_vel_call_back(call_back, []{});
   }
 
 private:
+  std::chrono::nanoseconds cmd_vel_timeout_duration_;
+
   rclcpp::Subscription<TwistMsg>::SharedPtr cmd_vel_subscription_;
   rclcpp::Subscription<JointMsg>::SharedPtr cmd_flat_kick_subscription_;
   rclcpp::Subscription<PoseMsg>::SharedPtr initialpose_subscription_;
+  rclcpp::TimerBase::SharedPtr cmd_vel_timeout_callback_timer_;
 };
 
 }  // namespace kiks::gr_sim_bridge

@@ -118,7 +118,7 @@ public:
   inline void set_initialpose_callback(const T & callback)
   {
     initialpose_subscription_ = (*this)->create_subscription<PoseMsg>(
-      "initial_pose", this->get_dynamic_reliable_qos(), callback);
+      "initialpose", this->get_dynamic_reliable_qos(), callback);
   }
 
 private:

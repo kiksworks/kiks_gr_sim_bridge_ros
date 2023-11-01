@@ -58,13 +58,20 @@ public:
 private:
   using ParameterMsg = rcl_interfaces::msg::ParameterValue;
   using TwistMsg = RobotSubscriberNode::TwistMsg;
+  using JointMsg = RobotSubscriberNode::JointMsg;
   using PoseMsg = RobotSubscriberNode::PoseMsg;
 
-  static inline void write_cmd_vel_to_packet(const TwistMsg & cmd_vel_msg, grSim_Packet * cmd_packet, int index = 0);
+  static inline void write_cmd_vel_to_packet(const TwistMsg & cmd_vel_msg, grSim_Packet * packet, int index = 0);
 
-  static inline void write_robot_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * replacement_packet, int index = 0);
+  static inline void write_cmd_spinner_to_packet(const JointMsg & cmd_spinner_msg, grSim_Packet * packet, int index = 0);
 
-  static inline void write_ball_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * replacement_packet);
+  static inline void write_cmd_flat_kick_to_packet(const JointMsg & cmd_flat_kick_msg, grSim_Packet * packet, int index = 0);
+
+  static inline void write_cmd_chip_kick_to_packet(const JointMsg & cmd_chip_kick_msg, grSim_Packet * packet, int index = 0);
+
+  static inline void write_robot_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * packet, int index = 0);
+
+  static inline void write_ball_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * packet);
 
   inline void set_rate(double rate);
 

@@ -94,6 +94,27 @@ public:
   }
   
   template <class T>
+  inline void set_cmd_spinner_callback(const T & callback)
+  {
+    cmd_spinner_subscription_ = (*this)->create_subscription<JointMsg>(
+      "cmd_spinner", this->get_static_qos(), callback);
+  }
+  
+  template <class T>
+  inline void set_cmd_flat_kick_callback(const T & callback)
+  {
+    cmd_flat_kick_subscription_ = (*this)->create_subscription<JointMsg>(
+      "cmd_flat_kick", this->get_dynamic_reliable_qos(), callback);
+  }
+  
+  template <class T>
+  inline void set_cmd_chip_kick_callback(const T & callback)
+  {
+    cmd_chip_kick_subscription_ = (*this)->create_subscription<JointMsg>(
+      "cmd_chip_kick", this->get_dynamic_reliable_qos(), callback);
+  }
+  
+  template <class T>
   inline void set_initialpose_callback(const T & callback)
   {
     initialpose_subscription_ = (*this)->create_subscription<PoseMsg>(
@@ -104,7 +125,7 @@ private:
   std::chrono::nanoseconds cmd_vel_timeout_duration_;
 
   rclcpp::Subscription<TwistMsg>::SharedPtr cmd_vel_subscription_;
-  rclcpp::Subscription<JointMsg>::SharedPtr cmd_flat_kick_subscription_;
+  rclcpp::Subscription<JointMsg>::SharedPtr cmd_spinner_subscription_, cmd_flat_kick_subscription_, cmd_chip_kick_subscription_;
   rclcpp::Subscription<PoseMsg>::SharedPtr initialpose_subscription_;
   rclcpp::TimerBase::SharedPtr cmd_vel_timeout_callback_timer_;
 };

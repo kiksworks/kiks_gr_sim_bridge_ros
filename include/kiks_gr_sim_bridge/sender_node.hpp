@@ -35,40 +35,52 @@ namespace kiks::gr_sim_bridge
 class SenderNode : public ExpandedNode
 {
 public:
-  static std::string default_name();
+  static auto default_name()
+  {
+    return "gr_sim_bridge";
+  }
 
-  explicit SenderNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  explicit SenderNode(const rclcpp::NodeOptions & node_options = rclcpp::NodeOptions())
+  : SenderNode(default_name(), "/", node_options)
+  {
+  }
 
   SenderNode(
-    const std::string & node_name, const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+    const std::string & node_name, const rclcpp::NodeOptions & node_options = rclcpp::NodeOptions())
+  : SenderNode(node_name, "/", node_options)
+  {
+  }
 
   SenderNode(
     const std::string & node_name, const std::string & node_namespace,
-    const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
-
-  explicit SenderNode(rclcpp::Node::SharedPtr node);
+    const rclcpp::NodeOptions & node_options = rclcpp::NodeOptions());
 
 private:
   using ParameterMsg = rcl_interfaces::msg::ParameterValue;
+  using TwistMsg = RobotSubscriberNode::TwistMsg;
+  using PoseMsg = RobotSubscriberNode::PoseMsg;
 
-  struct TeamData
-  {
-    grSim_Packet packet;
-    std::list<RobotSubscriberNode> robot_subscriber_nodes;
-    rclcpp::Subscription<ParameterMsg>::SharedPtr robots_param_subscription;
-  };
+  static inline void write_cmd_vel_to_packet(const TwistMsg & cmd_vel_msg, grSim_Packet * cmd_packet, int index = 0);
 
-  void send();
+  static inline void write_robot_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * replacement_packet, int index = 0);
 
-  void set_robot_nodes(TeamData * team_data, const ParameterMsg & param_msg, bool team_is_yellow);
+  static inline void write_ball_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * replacement_packet);
 
+  inline void set_rate(double rate);
+
+  inline void reset_subscriber_node_callbacks();
+
+  inline void send_packet(const grSim_Packet & packet);
+
+  // udp
   QUdpSocket udp_socket_;
   QHostAddress udp_gr_sim_address_;
   quint16 udp_port_;
-  grSim_Packet replacement_packet_;
-  bool has_replacement_;
-  TeamData yellow_, blue_;
-  std::unique_ptr<BallSubscriberNode> ball_subscriber_node_;
+  // robots & ball
+  std::unordered_map<bool, std::unordered_map<std::uint32_t, RobotSubscriberNode>> robot_subscriber_nodes_map_;
+  BallSubscriberNode ball_subscriber_node_;
+  std::list<grSim_Packet> cmds_packets_, replacement_packets_;
+  // callback handler
   rclcpp::TimerBase::SharedPtr sending_timer_;
 };
 

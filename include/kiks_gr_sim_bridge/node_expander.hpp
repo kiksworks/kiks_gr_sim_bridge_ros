@@ -106,6 +106,16 @@ protected:
       });
   }
 
+  template<typename T, class Parent, class... FuncArgs>
+  inline void add_param(std::string && name, const T & default_value, void (Parent::*param_setter)(FuncArgs...))
+  {
+    add_param<ParamValType<T>>(
+      std::move(name), default_value,
+      [this, param_setter](const FuncArgs & ... args) {
+        return (static_cast<Parent*>(this)->*param_setter)(args...);
+      });
+  }
+
   std::unordered_multimap<std::string, SetParamFunc> param_setter_map_;
 
 private:

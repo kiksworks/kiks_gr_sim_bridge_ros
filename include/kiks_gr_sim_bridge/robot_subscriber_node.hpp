@@ -34,59 +34,49 @@ namespace kiks::gr_sim_bridge
 class RobotSubscriberNode : public ExpandedSubNode
 {
 public:
-  struct RobotInfo
-  {
-    grSim_Robot_Command * command;
-    grSim_Replacement * replacement;
-    bool * has_replacement;
-    bool team_is_yellow;
-    int robot_id;
-  };
-
-  inline static std::string default_name() {return "gr_sim_bridge_robot_subuscriber";}
-
-  explicit RobotSubscriberNode(
-    const RobotInfo & robot_info,
-    const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
-
-  RobotSubscriberNode(
-    const RobotInfo & robot_info,
-    const std::string & node_name, const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
-
-  RobotSubscriberNode(
-    const RobotInfo & robot_info,
-    const std::string & node_name, const std::string & node_namespace,
-    const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
-
-  explicit RobotSubscriberNode(
-    const RobotInfo & robot_info, rclcpp::Node::SharedPtr node);
-
-  inline void update_validity() {update_validity((*this)->now());}
-
-  void update_validity(const rclcpp::Time & now);
-
-private:
   using TwistMsg = geometry_msgs::msg::Twist;
   using JointMsg = pendulum_msgs::msg::JointState;
   using PoseMsg = geometry_msgs::msg::PoseWithCovarianceStamped;
 
-  void subscribe_cmd_vel(TwistMsg::ConstSharedPtr cmd_vel_msg);
+  inline static constexpr auto default_name() noexcept
+  {
+    return "gr_sim_bridge_robot_subuscriber";
+  }
 
-  void subscribe_cmd_flat_kick(JointMsg::ConstSharedPtr cmd_flat_kick_msg);
+  explicit inline  RobotSubscriberNode(
+    const rclcpp::NodeOptions & node_options = rclcpp::NodeOptions())
+  : RobotSubscriberNode(std::make_shared<rclcpp::Node>(default_name(), "/", node_options))
+  {
+  }
 
-  void subscribe_cmd_chip_kick(JointMsg::ConstSharedPtr cmd_chip_kick_msg);
+  RobotSubscriberNode(
+    const std::string & node_name, const rclcpp::NodeOptions & node_options = rclcpp::NodeOptions())
+  : RobotSubscriberNode(std::make_shared<rclcpp::Node>(node_name, "/", node_options))
+  {
+  }
 
-  void subscribe_cmd_spinner(JointMsg::ConstSharedPtr cmd_spinner_msg);
+  RobotSubscriberNode(
+    const std::string & node_name, const std::string & node_namespace,
+    const rclcpp::NodeOptions & node_options = rclcpp::NodeOptions())
+  : RobotSubscriberNode(std::make_shared<rclcpp::Node>(node_name, node_namespace, node_options))
+  {
+  }
 
-  void subscribe_initialpose(PoseMsg::ConstSharedPtr initialpose_msg);
+  RobotSubscriberNode(rclcpp::Node::SharedPtr node);
+  
+  template <class T>
+  inline void set_cmd_vel_call_back(const T & call_back)
+  {
+    call_back(TwistMsg::ConstSharedPtr());
+    cmd_vel_subscription_ = (*this)->create_subscription<TwistMsg>("cmd_vel", this->get_dynamic_qos(), [call_back, this](TwistMsg::ConstSharedPtr cmd_vel) {
+        call_back(cmd_vel);
+        // cmd_vel_timeout_handle_timer_->reset();
+      });
+  }
 
-  const RobotInfo robot_info_;
-  double chip_kick_coef_x_, chip_kick_coef_z_;
-  std::chrono::nanoseconds vel_valid_duration_, kick_valid_duration_;
-  rclcpp::Time vel_valid_time_, kick_valid_time_;
+private:
   rclcpp::Subscription<TwistMsg>::SharedPtr cmd_vel_subscription_;
-  rclcpp::Subscription<JointMsg>::SharedPtr cmd_flat_kick_subscription_,
-    cmd_chip_kick_subscription_, cmd_spinner_subscription_;
+  rclcpp::Subscription<JointMsg>::SharedPtr cmd_flat_kick_subscription_;
   rclcpp::Subscription<PoseMsg>::SharedPtr initialpose_subscription_;
 };
 

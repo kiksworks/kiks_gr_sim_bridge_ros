@@ -120,6 +120,7 @@ inline void SenderNode::reset_subscriber_node_callbacks()
   cmds_packets_.clear();
   replacement_packets_.clear();
   if (sending_timer_) {
+    auto replacement_packet = replacement_packets_.emplace_back();
     for (auto & [isteamyellow, robot_subscriber_nodes] : robot_subscriber_nodes_map_) {
       auto & packet = cmds_packets_.emplace_back();
       auto cmd = packet.mutable_commands();
@@ -132,6 +133,12 @@ inline void SenderNode::reset_subscriber_node_callbacks()
             this->write_cmd_vel_to_packet(*cmd_vel_msg, &packet, index);
           }, [this, &packet, index] {
             this->write_cmd_vel_to_packet(TwistMsg(), &packet, index);
+          });
+        robot_subscriber_node.set_initialpose_callback([this, &replacement_packet](PoseMsg::ConstSharedPtr initialpose_msg) {
+            auto replacement = replacement_packet.mutable_replacement();
+            auto index = replacement->robots_size();
+            replacement->add_robots();
+            this->write_robot_initialpose_to_packet(*initialpose_msg, &replacement_packet, index);
           });
       }
     }

@@ -92,6 +92,13 @@ public:
   {
     this->set_cmd_vel_call_back(call_back, []{});
   }
+  
+  template <class T>
+  inline void set_initialpose_callback(const T & callback)
+  {
+    initialpose_subscription_ = (*this)->create_subscription<PoseMsg>(
+      "initial_pose", this->get_dynamic_reliable_qos(), callback);
+  }
 
 private:
   std::chrono::nanoseconds cmd_vel_timeout_duration_;

@@ -44,6 +44,7 @@ SenderNode::SenderNode(
       this->create_wall_timer(
         std::chrono::nanoseconds(static_cast<std::int64_t>(1e9 / rate)), [this]() {
           for (auto & cmds_packet : cmds_packets_) {
+            cmds_packet.mutable_commands()->set_timestamp(1e-9 * this->now().nanoseconds());
             this->send_packet(cmds_packet);
             for (int i = 0; i < cmds_packet.mutable_commands()->robot_commands_size(); ++i) {
               write_cmd_flat_kick_to_packet(JointMsg(), &cmds_packet, i);
@@ -86,6 +87,18 @@ std::vector<std::string> SenderNode::create_robot_names(const std::string & name
       10 ? name_base + "0" + std::to_string(i) : name_base + std::to_string(i));
   }
   return names;
+}
+
+void SenderNode::initialize_robot_cmd(int id, grSim_Robot_Command * robot_cmd)
+{
+  robot_cmd->set_id(id);
+  robot_cmd->set_veltangent(0);
+  robot_cmd->set_velnormal(0);
+  robot_cmd->set_velangular(0);
+  robot_cmd->set_spinner(false);
+  robot_cmd->set_kickspeedx(0);
+  robot_cmd->set_kickspeedz(0);
+  robot_cmd->set_wheelsspeed(false);
 }
 
 void SenderNode::write_cmd_vel_to_packet(
@@ -161,7 +174,7 @@ inline void SenderNode::reset_subscriber_node_callbacks()
       for (auto & [id, robot_subscriber_node] : robot_subscriber_nodes) {
         auto index = cmd->robot_commands_size();
         auto robot_command = cmd->add_robot_commands();
-        robot_command->set_id(id);
+        initialize_robot_cmd(id, robot_command);
         robot_subscriber_node.set_cmd_vel_call_back(
           [this, &packet, index](TwistMsg::ConstSharedPtr cmd_vel_msg) {
             this->write_cmd_vel_to_packet(*cmd_vel_msg, &packet, index);
@@ -201,35 +214,42 @@ inline void SenderNode::reset_subscriber_node_callbacks()
         auto cmd = packet.mutable_commands();
         cmd->set_isteamyellow(isteamyellow);
         auto robot_command = cmd->add_robot_commands();
-        robot_command->set_id(id);
+        initialize_robot_cmd(id, robot_command);
         robot_subscriber_node.set_cmd_vel_call_back(
           [this, &packet](TwistMsg::ConstSharedPtr cmd_vel_msg) {
+            packet.mutable_commands()->set_timestamp(1e-9 * this->now().nanoseconds());
             this->write_cmd_vel_to_packet(*cmd_vel_msg, &packet);
             this->send_packet(packet);
-          }, [this, packet] {
+          }, [this, &packet] {
+            packet.mutable_commands()->set_timestamp(1e-9 * this->now().nanoseconds());
+            this->write_cmd_vel_to_packet(TwistMsg(), &packet);
             this->send_packet(packet);
           });
         robot_subscriber_node.set_cmd_spinner_callback(
           [this, &packet](JointMsg::ConstSharedPtr cmd_spinner_msg) {
+            packet.mutable_commands()->set_timestamp(1e-9 * this->now().nanoseconds());
             this->write_cmd_spinner_to_packet(*cmd_spinner_msg, &packet);
             this->send_packet(packet);
           });
         robot_subscriber_node.set_cmd_flat_kick_callback(
           [this, &packet](JointMsg::ConstSharedPtr cmd_flat_kick_msg) {
+            packet.mutable_commands()->set_timestamp(1e-9 * this->now().nanoseconds());
             this->write_cmd_flat_kick_to_packet(*cmd_flat_kick_msg, &packet);
             this->send_packet(packet);
           });
         robot_subscriber_node.set_cmd_chip_kick_callback(
           [this, &packet](JointMsg::ConstSharedPtr cmd_chip_kick_msg) {
+            packet.mutable_commands()->set_timestamp(1e-9 * this->now().nanoseconds());
             this->write_cmd_spinner_to_packet(*cmd_chip_kick_msg, &packet);
             this->send_packet(packet);
           });
         auto & replacement_packet = replacement_packets_.emplace_back();
         robot_subscriber_node.set_initialpose_callback(
-          [this, &replacement_packet](PoseMsg::ConstSharedPtr initialpose_msg) {
+          [this, &replacement_packet, id](PoseMsg::ConstSharedPtr initialpose_msg) {
             auto replacement = replacement_packet.mutable_replacement();
             auto index = replacement->robots_size();
-            replacement->add_robots();
+            auto robot_replacement = replacement->add_robots();
+            robot_replacement->set_id(id);
             this->write_robot_initialpose_to_packet(*initialpose_msg, &replacement_packet, index);
             this->send_packet(replacement_packet);
           });

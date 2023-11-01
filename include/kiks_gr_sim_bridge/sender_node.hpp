@@ -66,6 +66,8 @@ private:
     const std::string & name_base,
     int count = 16);
 
+  static inline void initialize_robot_cmd(int id, grSim_Robot_Command * robot_cmd);
+
   static inline void write_cmd_vel_to_packet(
     const TwistMsg & cmd_vel_msg, grSim_Packet * packet,
     int index = 0);

@@ -60,6 +60,7 @@ private:
   using TwistMsg = RobotSubscriberNode::TwistMsg;
   using JointMsg = RobotSubscriberNode::JointMsg;
   using PoseMsg = RobotSubscriberNode::PoseMsg;
+  using BallPoseMsg = BallSubscriberNode::PoseMsg;
 
   static inline void write_cmd_vel_to_packet(const TwistMsg & cmd_vel_msg, grSim_Packet * packet, int index = 0);
 
@@ -71,7 +72,7 @@ private:
 
   static inline void write_robot_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * packet, int index = 0);
 
-  static inline void write_ball_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * packet);
+  static inline void write_ball_initialpose_to_packet(const BallPoseMsg & initialpose_msg, grSim_Packet * packet);
 
   inline void set_rate(double rate);
 

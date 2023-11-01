@@ -25,7 +25,7 @@ SenderNode::SenderNode(
   const std::string & node_name, const std::string & node_namespace,
   const rclcpp::NodeOptions & options)
 : ExpandedNode(node_name, node_namespace, options),
-  ball_subscriber_node_(BallSubscriberNode::BallInfo(), this->create_sub_node("ball"))
+  ball_subscriber_node_(this->create_sub_node("ball"))
 {
   // Parameter of ssl-vision udp port
   this->add_param<std::int64_t>(
@@ -112,7 +112,7 @@ void SenderNode::write_robot_initialpose_to_packet(const PoseMsg & initialpose_m
       initialpose_msg.pose.pose.orientation.w) * (2 * 180.0 / std::acos(-1.0)));
 }
 
-void SenderNode::write_ball_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * packet)
+void SenderNode::write_ball_initialpose_to_packet(const BallPoseMsg & initialpose_msg, grSim_Packet * packet)
 {
   auto ball_replacement = packet->mutable_replacement()->mutable_ball();
   ball_replacement->set_x(initialpose_msg.pose.pose.position.x);
@@ -174,6 +174,9 @@ inline void SenderNode::reset_subscriber_node_callbacks()
           });
       }
     }
+    ball_subscriber_node_.set_initialpose_callback([this, &replacement_packet](BallPoseMsg::ConstSharedPtr initialpose_msg) {
+        this->write_ball_initialpose_to_packet(*initialpose_msg, &replacement_packet);
+      });
   }
   else {
     for (auto & [isteamyellow, robot_subscriber_nodes] : robot_subscriber_nodes_map_) {
@@ -211,6 +214,11 @@ inline void SenderNode::reset_subscriber_node_callbacks()
           });
       }
     }
+    auto & replacement_packet = replacement_packets_.emplace_back();
+    ball_subscriber_node_.set_initialpose_callback([this, &replacement_packet](BallPoseMsg::ConstSharedPtr initialpose_msg) {
+        this->write_ball_initialpose_to_packet(*initialpose_msg, &replacement_packet);
+        this->send_packet(replacement_packet);
+      });
   }
 }
 

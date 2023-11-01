@@ -30,36 +30,29 @@ namespace kiks::gr_sim_bridge
 class BallSubscriberNode : public ExpandedSubNode
 {
 public:
-  struct BallInfo
-  {
-    grSim_Replacement * replacement;
-    bool * has_replacement;
-  };
-
-  inline static std::string default_name() {return "gr_sim_bridge_ball_subuscriber";}
-
-  explicit BallSubscriberNode(
-    const BallInfo & robot_info,
-    const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
-
-  BallSubscriberNode(
-    const BallInfo & robot_info,
-    const std::string & node_name, const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
-
-  BallSubscriberNode(
-    const BallInfo & robot_info,
-    const std::string & node_name, const std::string & node_namespace,
-    const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
-
-  explicit BallSubscriberNode(
-    const BallInfo & robot_info, rclcpp::Node::SharedPtr node);
-
-private:
   using PoseMsg = geometry_msgs::msg::PoseWithCovarianceStamped;
 
-  void subscribe_initialpose(PoseMsg::ConstSharedPtr initialpose_msg);
+  static inline constexpr auto default_name()
+  {
+    return "gr_sim_bridge_ball_subuscriber";
+  }
 
-  const BallInfo ball_info_;
+  explicit BallSubscriberNode(rclcpp::Node::SharedPtr node);
+
+  template <class... Args>
+  explicit inline BallSubscriberNode(const Args... args)
+  : BallSubscriberNode(std::make_shared<rclcpp::Node>(args...))
+  {
+  }
+  
+  template <class T>
+  inline void set_initialpose_callback(const T & callback)
+  {
+    initialpose_subscription_ = (*this)->create_subscription<PoseMsg>(
+      "initial_pose", this->get_dynamic_reliable_qos(), callback);
+  }
+
+private:
   rclcpp::Subscription<PoseMsg>::SharedPtr initialpose_subscription_;
 };
 

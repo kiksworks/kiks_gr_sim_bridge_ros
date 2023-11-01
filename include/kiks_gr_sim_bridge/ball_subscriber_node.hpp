@@ -39,13 +39,13 @@ public:
 
   explicit BallSubscriberNode(rclcpp::Node::SharedPtr node);
 
-  template <class... Args>
+  template<class ... Args>
   explicit inline BallSubscriberNode(const Args... args)
-  : BallSubscriberNode(std::make_shared<rclcpp::Node>(args...))
+  : BallSubscriberNode(std::make_shared<rclcpp::Node>(args ...))
   {
   }
-  
-  template <class T>
+
+  template<class T>
   inline void set_initialpose_callback(const T & callback)
   {
     initialpose_subscription_ = (*this)->create_subscription<PoseMsg>(

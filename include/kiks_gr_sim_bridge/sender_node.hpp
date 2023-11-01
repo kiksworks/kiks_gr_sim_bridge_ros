@@ -62,21 +62,33 @@ private:
   using PoseMsg = RobotSubscriberNode::PoseMsg;
   using BallPoseMsg = BallSubscriberNode::PoseMsg;
 
-  static inline std::vector<std::string> create_robot_names(const std::string & name_base, int count = 16);
+  static inline std::vector<std::string> create_robot_names(
+    const std::string & name_base,
+    int count = 16);
 
-  static inline void write_cmd_vel_to_packet(const TwistMsg & cmd_vel_msg, grSim_Packet * packet, int index = 0);
+  static inline void write_cmd_vel_to_packet(
+    const TwistMsg & cmd_vel_msg, grSim_Packet * packet,
+    int index = 0);
 
-  static inline void write_cmd_spinner_to_packet(const JointMsg & cmd_spinner_msg, grSim_Packet * packet, int index = 0);
+  static inline void write_cmd_spinner_to_packet(
+    const JointMsg & cmd_spinner_msg,
+    grSim_Packet * packet, int index = 0);
 
-  static inline void write_cmd_flat_kick_to_packet(const JointMsg & cmd_flat_kick_msg, grSim_Packet * packet, int index = 0);
+  static inline void write_cmd_flat_kick_to_packet(
+    const JointMsg & cmd_flat_kick_msg,
+    grSim_Packet * packet, int index = 0);
 
-  static inline void write_cmd_chip_kick_to_packet(const JointMsg & cmd_chip_kick_msg, grSim_Packet * packet, int index = 0);
+  static inline void write_cmd_chip_kick_to_packet(
+    const JointMsg & cmd_chip_kick_msg,
+    grSim_Packet * packet, int index = 0);
 
-  static inline void write_robot_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * packet, int index = 0);
+  static inline void write_robot_initialpose_to_packet(
+    const PoseMsg & initialpose_msg,
+    grSim_Packet * packet, int index = 0);
 
-  static inline void write_ball_initialpose_to_packet(const BallPoseMsg & initialpose_msg, grSim_Packet * packet);
-
-  inline void set_rate(double rate);
+  static inline void write_ball_initialpose_to_packet(
+    const BallPoseMsg & initialpose_msg,
+    grSim_Packet * packet);
 
   inline void reset_subscriber_node_callbacks();
 
@@ -87,7 +99,8 @@ private:
   QHostAddress udp_gr_sim_address_;
   quint16 udp_port_;
   // robots & ball
-  std::unordered_map<bool, std::unordered_map<std::uint32_t, RobotSubscriberNode>> robot_subscriber_nodes_map_;
+  std::unordered_map<bool,
+    std::unordered_map<std::uint32_t, RobotSubscriberNode>> robot_subscriber_nodes_map_;
   BallSubscriberNode ball_subscriber_node_;
   std::list<grSim_Packet> cmds_packets_, replacement_packets_;
   // callback handler

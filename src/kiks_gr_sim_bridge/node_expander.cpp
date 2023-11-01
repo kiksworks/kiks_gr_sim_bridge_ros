@@ -17,14 +17,13 @@ NodeExpander::NodeExpander(rclcpp::Node & node)
       [this](const auto & params) {return this->set_params(params);}))
 #endif
 {
-  this->add_param("dyanmic_qos.reliability", "best_effort", [this](const std::string & str) {
+  this->add_param(
+    "dyanmic_qos.reliability", "best_effort", [this](const std::string & str) {
       if (str == "best_effort") {
         dynamic_qos_.best_effort();
-      }
-      else if (str == "reliable") {
+      } else if (str == "reliable") {
         dynamic_qos_.reliable();
-      }
-      else {
+      } else {
         throw std::runtime_error("reliability must be \"best_effort\" or \"reliable\"");
       }
     });

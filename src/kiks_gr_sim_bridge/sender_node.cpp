@@ -39,51 +39,40 @@ SenderNode::SenderNode(
     });
   // Parameter of sending_timer update frequency[hz]
   this->add_param<double>(
-    "rate", 0.0, &SenderNode::set_rate);
-  // initialize robots by initializer func
-  // auto initialize_robots =
-  //   [this](const std::string & team_str, bool team_is_yellow) {
-  //     // create default robot_strs
-  //     std::vector<std::string> default_robot_strs;
-  //     for (int i = 0; i < 16; ++i) {
-  //       default_robot_strs.emplace_back(
-  //         (i < 10) ?
-  //         (team_str + "0" + std::to_string(i)) : (team_str + std::to_string(i)));
-  //     }
-  //     // set commnad team_color
-  //     team_data.packet.mutable_commands()->set_isteamyellow(team_is_yellow);
-  //     // Parameter of robot nodes
-  //     // Default is
-  //     // {"${teamcolor}00", "${teamcolor}01" ... "${teamcolor}14", "${teamcolor}15"}
-  //     // for each team
-  //     this->add_param<std::vector<std::string>>(
-  //       team_str + "_robots", default_robot_strs,
-  //       [this, &team_data, team_is_yellow](const rclcpp::Parameter & param) {
-  //         set_robot_nodes(&team_data, param.get_value_message(), team_is_yellow);
-  //       });
-  //     // set robot nodes subscription
-  //     team_data.robots_param_subscription = this->create_subscription<ParameterMsg>(
-  //       team_str + "_robots", this->get_static_qos(),
-  //       [this, &team_data, team_is_yellow](ParameterMsg::ConstSharedPtr robots_param_msg) {
-  //         set_robot_nodes(&team_data, *robots_param_msg, team_is_yellow);
-  //       });
-  //   };
-  // initialize_robots("yellow", yellow_, true);
-  // initialize_robots("blue", blue_, false);
+    "rate", 0.0, [this](double rate) {
+      sending_timer_ = (rate == 0) ? rclcpp::TimerBase::SharedPtr() :
+      this->create_wall_timer(
+        std::chrono::nanoseconds(static_cast<std::int64_t>(1e9 / rate)), [this]() {
+          for (auto & cmds_packet : cmds_packets_) {
+            this->send_packet(cmds_packet);
+            for (int i = 0; i < cmds_packet.mutable_commands()->robot_commands_size(); ++i) {
+              write_cmd_flat_kick_to_packet(JointMsg(), &cmds_packet, i);
+            }
+          }
+          for (auto & replacement_packet : replacement_packets_) {
+            this->send_packet(replacement_packet);
+            replacement_packet.clear_replacement();
+          }
+        });
+      this->reset_subscriber_node_callbacks();
+    });
+  // Parameter of robots[hz]
   robot_subscriber_nodes_map_[true];
   robot_subscriber_nodes_map_[false];
   for (auto & [isteamyellow, robot_subscriber_nodes] : robot_subscriber_nodes_map_) {
     std::string color = isteamyellow ? "yellow" : "blue";
-    this->add_param(color + "_robots", this->create_robot_names(color), [this, &robot_subscriber_nodes](const std::vector<std::string>& names) {
-      robot_subscriber_nodes.clear();
-      int id = 0;
-      for (const auto & name : names) {
-        if (name != "") {
-          robot_subscriber_nodes.emplace(id, this->create_sub_node(name));
+    this->add_param(
+      color + "_robots", this->create_robot_names(color),
+      [this, &robot_subscriber_nodes](const std::vector<std::string> & names) {
+        robot_subscriber_nodes.clear();
+        int id = 0;
+        for (const auto & name : names) {
+          if (name != "") {
+            robot_subscriber_nodes.emplace(id, this->create_sub_node(name));
+          }
+          ++id;
         }
-        ++id;
-      }
-    });
+      });
     this->reset_subscriber_node_callbacks();
   }
 }
@@ -92,12 +81,16 @@ std::vector<std::string> SenderNode::create_robot_names(const std::string & name
 {
   std::vector<std::string> names;
   for (int i = 0; i < count; ++i) {
-    names.emplace_back(i < 10 ? name_base + "0" + std::to_string(i) : name_base + std::to_string(i));
+    names.emplace_back(
+      i <
+      10 ? name_base + "0" + std::to_string(i) : name_base + std::to_string(i));
   }
   return names;
 }
 
-void SenderNode::write_cmd_vel_to_packet(const TwistMsg & cmd_vel_msg, grSim_Packet * packet, int index)
+void SenderNode::write_cmd_vel_to_packet(
+  const TwistMsg & cmd_vel_msg, grSim_Packet * packet,
+  int index)
 {
   auto robot_cmd = packet->mutable_commands()->mutable_robot_commands(index);
   robot_cmd->set_veltangent(cmd_vel_msg.linear.x);
@@ -105,19 +98,26 @@ void SenderNode::write_cmd_vel_to_packet(const TwistMsg & cmd_vel_msg, grSim_Pac
   robot_cmd->set_velangular(cmd_vel_msg.angular.z);
 }
 
-void SenderNode::write_cmd_spinner_to_packet(const JointMsg & cmd_spinner_msg, grSim_Packet * packet, int index)
+void SenderNode::write_cmd_spinner_to_packet(
+  const JointMsg & cmd_spinner_msg,
+  grSim_Packet * packet, int index)
 {
-  packet->mutable_commands()->mutable_robot_commands(index)->set_spinner(cmd_spinner_msg.velocity > 0);
+  packet->mutable_commands()->mutable_robot_commands(index)->set_spinner(
+    cmd_spinner_msg.velocity > 0);
 }
 
-void SenderNode::write_cmd_flat_kick_to_packet(const JointMsg & cmd_flat_kick_msg, grSim_Packet * packet, int index)
+void SenderNode::write_cmd_flat_kick_to_packet(
+  const JointMsg & cmd_flat_kick_msg,
+  grSim_Packet * packet, int index)
 {
   auto robot_cmd = packet->mutable_commands()->mutable_robot_commands(index);
   robot_cmd->set_kickspeedx(cmd_flat_kick_msg.velocity);
   robot_cmd->set_kickspeedz(0);
 }
 
-void SenderNode::write_cmd_chip_kick_to_packet(const JointMsg & cmd_chip_kick_msg, grSim_Packet * packet, int index)
+void SenderNode::write_cmd_chip_kick_to_packet(
+  const JointMsg & cmd_chip_kick_msg,
+  grSim_Packet * packet, int index)
 {
   auto robot_cmd = packet->mutable_commands()->mutable_robot_commands(index);
   constexpr auto kick_angle = 60 / 180 * std::acos(-1.0);
@@ -125,7 +125,9 @@ void SenderNode::write_cmd_chip_kick_to_packet(const JointMsg & cmd_chip_kick_ms
   robot_cmd->set_kickspeedz(cmd_chip_kick_msg.velocity * std::sin(kick_angle));
 }
 
-void SenderNode::write_robot_initialpose_to_packet(const PoseMsg & initialpose_msg, grSim_Packet * packet, int index)
+void SenderNode::write_robot_initialpose_to_packet(
+  const PoseMsg & initialpose_msg,
+  grSim_Packet * packet, int index)
 {
   auto robot_replacement = packet->mutable_replacement()->mutable_robots(index);
   robot_replacement->set_x(initialpose_msg.pose.pose.position.x);
@@ -136,30 +138,13 @@ void SenderNode::write_robot_initialpose_to_packet(const PoseMsg & initialpose_m
       initialpose_msg.pose.pose.orientation.w) * (2 * 180.0 / std::acos(-1.0)));
 }
 
-void SenderNode::write_ball_initialpose_to_packet(const BallPoseMsg & initialpose_msg, grSim_Packet * packet)
+void SenderNode::write_ball_initialpose_to_packet(
+  const BallPoseMsg & initialpose_msg,
+  grSim_Packet * packet)
 {
   auto ball_replacement = packet->mutable_replacement()->mutable_ball();
   ball_replacement->set_x(initialpose_msg.pose.pose.position.x);
   ball_replacement->set_y(initialpose_msg.pose.pose.position.y);
-}
-
-void SenderNode::set_rate(double rate)
-{
-  sending_timer_ = (rate == 0) ? rclcpp::TimerBase::SharedPtr() :
-    this->create_wall_timer(std::chrono::nanoseconds(static_cast<std::int64_t>(1e9 / rate)), [this] () {
-        for(auto & cmds_packet : cmds_packets_) {
-          this->send_packet(cmds_packet);
-          for(int i = 0; i < cmds_packet.mutable_commands()->robot_commands_size(); ++i) {
-            write_cmd_flat_kick_to_packet(JointMsg(), &cmds_packet, i);
-          }
-        }
-        for(auto & replacement_packet : replacement_packets_) {
-          this->send_packet(replacement_packet);
-          replacement_packet.clear_replacement();
-        }
-      });
-
-  this->reset_subscriber_node_callbacks();
 }
 
 inline void SenderNode::reset_subscriber_node_callbacks()
@@ -167,6 +152,7 @@ inline void SenderNode::reset_subscriber_node_callbacks()
   cmds_packets_.clear();
   replacement_packets_.clear();
   if (sending_timer_) {
+    // set callback to sync
     auto & replacement_packet = replacement_packets_.emplace_back();
     for (auto & [isteamyellow, robot_subscriber_nodes] : robot_subscriber_nodes_map_) {
       auto & packet = cmds_packets_.emplace_back();
@@ -176,21 +162,26 @@ inline void SenderNode::reset_subscriber_node_callbacks()
         auto index = cmd->robot_commands_size();
         auto robot_command = cmd->add_robot_commands();
         robot_command->set_id(id);
-        robot_subscriber_node.set_cmd_vel_call_back([this, &packet, index](TwistMsg::ConstSharedPtr cmd_vel_msg) {
+        robot_subscriber_node.set_cmd_vel_call_back(
+          [this, &packet, index](TwistMsg::ConstSharedPtr cmd_vel_msg) {
             this->write_cmd_vel_to_packet(*cmd_vel_msg, &packet, index);
           }, [this, &packet, index] {
             this->write_cmd_vel_to_packet(TwistMsg(), &packet, index);
           });
-        robot_subscriber_node.set_cmd_spinner_callback([this, &packet, index](JointMsg::ConstSharedPtr cmd_spinner_msg) {
+        robot_subscriber_node.set_cmd_spinner_callback(
+          [this, &packet, index](JointMsg::ConstSharedPtr cmd_spinner_msg) {
             this->write_cmd_spinner_to_packet(*cmd_spinner_msg, &packet, index);
           });
-        robot_subscriber_node.set_cmd_flat_kick_callback([this, &packet, index](JointMsg::ConstSharedPtr cmd_flat_kick_msg) {
+        robot_subscriber_node.set_cmd_flat_kick_callback(
+          [this, &packet, index](JointMsg::ConstSharedPtr cmd_flat_kick_msg) {
             this->write_cmd_flat_kick_to_packet(*cmd_flat_kick_msg, &packet, index);
           });
-        robot_subscriber_node.set_cmd_chip_kick_callback([this, &packet, index](JointMsg::ConstSharedPtr cmd_chip_kick_msg) {
+        robot_subscriber_node.set_cmd_chip_kick_callback(
+          [this, &packet, index](JointMsg::ConstSharedPtr cmd_chip_kick_msg) {
             this->write_cmd_spinner_to_packet(*cmd_chip_kick_msg, &packet, index);
           });
-        robot_subscriber_node.set_initialpose_callback([this, &replacement_packet](PoseMsg::ConstSharedPtr initialpose_msg) {
+        robot_subscriber_node.set_initialpose_callback(
+          [this, &replacement_packet](PoseMsg::ConstSharedPtr initialpose_msg) {
             auto replacement = replacement_packet.mutable_replacement();
             auto index = replacement->robots_size();
             replacement->add_robots();
@@ -198,11 +189,12 @@ inline void SenderNode::reset_subscriber_node_callbacks()
           });
       }
     }
-    ball_subscriber_node_.set_initialpose_callback([this, &replacement_packet](BallPoseMsg::ConstSharedPtr initialpose_msg) {
+    ball_subscriber_node_.set_initialpose_callback(
+      [this, &replacement_packet](BallPoseMsg::ConstSharedPtr initialpose_msg) {
         this->write_ball_initialpose_to_packet(*initialpose_msg, &replacement_packet);
       });
-  }
-  else {
+  } else {
+    // set callback to async
     for (auto & [isteamyellow, robot_subscriber_nodes] : robot_subscriber_nodes_map_) {
       for (auto & [id, robot_subscriber_node] : robot_subscriber_nodes) {
         auto & packet = cmds_packets_.emplace_back();
@@ -210,26 +202,31 @@ inline void SenderNode::reset_subscriber_node_callbacks()
         cmd->set_isteamyellow(isteamyellow);
         auto robot_command = cmd->add_robot_commands();
         robot_command->set_id(id);
-        robot_subscriber_node.set_cmd_vel_call_back([this, &packet](TwistMsg::ConstSharedPtr cmd_vel_msg) {
+        robot_subscriber_node.set_cmd_vel_call_back(
+          [this, &packet](TwistMsg::ConstSharedPtr cmd_vel_msg) {
             this->write_cmd_vel_to_packet(*cmd_vel_msg, &packet);
             this->send_packet(packet);
           }, [this, packet] {
             this->send_packet(packet);
           });
-        robot_subscriber_node.set_cmd_spinner_callback([this, &packet](JointMsg::ConstSharedPtr cmd_spinner_msg) {
+        robot_subscriber_node.set_cmd_spinner_callback(
+          [this, &packet](JointMsg::ConstSharedPtr cmd_spinner_msg) {
             this->write_cmd_spinner_to_packet(*cmd_spinner_msg, &packet);
             this->send_packet(packet);
           });
-        robot_subscriber_node.set_cmd_flat_kick_callback([this, &packet](JointMsg::ConstSharedPtr cmd_flat_kick_msg) {
+        robot_subscriber_node.set_cmd_flat_kick_callback(
+          [this, &packet](JointMsg::ConstSharedPtr cmd_flat_kick_msg) {
             this->write_cmd_flat_kick_to_packet(*cmd_flat_kick_msg, &packet);
             this->send_packet(packet);
           });
-        robot_subscriber_node.set_cmd_chip_kick_callback([this, &packet](JointMsg::ConstSharedPtr cmd_chip_kick_msg) {
+        robot_subscriber_node.set_cmd_chip_kick_callback(
+          [this, &packet](JointMsg::ConstSharedPtr cmd_chip_kick_msg) {
             this->write_cmd_spinner_to_packet(*cmd_chip_kick_msg, &packet);
             this->send_packet(packet);
           });
         auto & replacement_packet = replacement_packets_.emplace_back();
-        robot_subscriber_node.set_initialpose_callback([this, &replacement_packet](PoseMsg::ConstSharedPtr initialpose_msg) {
+        robot_subscriber_node.set_initialpose_callback(
+          [this, &replacement_packet](PoseMsg::ConstSharedPtr initialpose_msg) {
             auto replacement = replacement_packet.mutable_replacement();
             auto index = replacement->robots_size();
             replacement->add_robots();
@@ -239,7 +236,8 @@ inline void SenderNode::reset_subscriber_node_callbacks()
       }
     }
     auto & replacement_packet = replacement_packets_.emplace_back();
-    ball_subscriber_node_.set_initialpose_callback([this, &replacement_packet](BallPoseMsg::ConstSharedPtr initialpose_msg) {
+    ball_subscriber_node_.set_initialpose_callback(
+      [this, &replacement_packet](BallPoseMsg::ConstSharedPtr initialpose_msg) {
         this->write_ball_initialpose_to_packet(*initialpose_msg, &replacement_packet);
         this->send_packet(replacement_packet);
       });

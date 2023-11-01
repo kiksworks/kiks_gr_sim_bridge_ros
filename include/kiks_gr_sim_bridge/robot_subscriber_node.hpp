@@ -43,7 +43,7 @@ public:
     return "gr_sim_bridge_robot_subuscriber";
   }
 
-  explicit inline  RobotSubscriberNode(
+  explicit inline RobotSubscriberNode(
     const rclcpp::NodeOptions & node_options = rclcpp::NodeOptions())
   : RobotSubscriberNode(std::make_shared<rclcpp::Node>(default_name(), "/", node_options))
   {
@@ -63,8 +63,8 @@ public:
   }
 
   RobotSubscriberNode(rclcpp::Node::SharedPtr node);
-  
-  template <class T, class U>
+
+  template<class T, class U>
   inline void set_cmd_vel_call_back(const T & call_back, const U timeout_callback)
   {
     auto timer_callback = [this, timeout_callback] {
@@ -73,48 +73,52 @@ public:
       };
 
     if (cmd_vel_timeout_callback_timer_) {
-      cmd_vel_timeout_callback_timer_ = (*this)->create_wall_timer(cmd_vel_timeout_duration_, timer_callback);
+      cmd_vel_timeout_callback_timer_ = (*this)->create_wall_timer(
+        cmd_vel_timeout_duration_,
+        timer_callback);
     }
-    
-    cmd_vel_subscription_ = (*this)->create_subscription<TwistMsg>("cmd_vel", this->get_dynamic_qos(), [call_back, timer_callback, this](TwistMsg::ConstSharedPtr cmd_vel) {
+
+    cmd_vel_subscription_ = (*this)->create_subscription<TwistMsg>(
+      "cmd_vel", this->get_dynamic_qos(),
+      [call_back, timer_callback, this](TwistMsg::ConstSharedPtr cmd_vel) {
         call_back(cmd_vel);
-        if(cmd_vel_timeout_callback_timer_) {
+        if (cmd_vel_timeout_callback_timer_) {
           cmd_vel_timeout_callback_timer_->reset();
-        }
-        else {
-          cmd_vel_timeout_callback_timer_ = (*this)->create_wall_timer(cmd_vel_timeout_duration_, timer_callback);
+        } else {
+          cmd_vel_timeout_callback_timer_ =
+          (*this)->create_wall_timer(cmd_vel_timeout_duration_, timer_callback);
         }
       });
   }
-  
-  template <class T>
+
+  template<class T>
   inline void set_cmd_vel_call_back(const T & call_back)
   {
-    this->set_cmd_vel_call_back(call_back, []{});
+    this->set_cmd_vel_call_back(call_back, [] {});
   }
-  
-  template <class T>
+
+  template<class T>
   inline void set_cmd_spinner_callback(const T & callback)
   {
     cmd_spinner_subscription_ = (*this)->create_subscription<JointMsg>(
       "cmd_spinner", this->get_static_qos(), callback);
   }
-  
-  template <class T>
+
+  template<class T>
   inline void set_cmd_flat_kick_callback(const T & callback)
   {
     cmd_flat_kick_subscription_ = (*this)->create_subscription<JointMsg>(
       "cmd_flat_kick", this->get_dynamic_reliable_qos(), callback);
   }
-  
-  template <class T>
+
+  template<class T>
   inline void set_cmd_chip_kick_callback(const T & callback)
   {
     cmd_chip_kick_subscription_ = (*this)->create_subscription<JointMsg>(
       "cmd_chip_kick", this->get_dynamic_reliable_qos(), callback);
   }
-  
-  template <class T>
+
+  template<class T>
   inline void set_initialpose_callback(const T & callback)
   {
     initialpose_subscription_ = (*this)->create_subscription<PoseMsg>(
@@ -125,7 +129,8 @@ private:
   std::chrono::nanoseconds cmd_vel_timeout_duration_;
 
   rclcpp::Subscription<TwistMsg>::SharedPtr cmd_vel_subscription_;
-  rclcpp::Subscription<JointMsg>::SharedPtr cmd_spinner_subscription_, cmd_flat_kick_subscription_, cmd_chip_kick_subscription_;
+  rclcpp::Subscription<JointMsg>::SharedPtr cmd_spinner_subscription_, cmd_flat_kick_subscription_,
+    cmd_chip_kick_subscription_;
   rclcpp::Subscription<PoseMsg>::SharedPtr initialpose_subscription_;
   rclcpp::TimerBase::SharedPtr cmd_vel_timeout_callback_timer_;
 };

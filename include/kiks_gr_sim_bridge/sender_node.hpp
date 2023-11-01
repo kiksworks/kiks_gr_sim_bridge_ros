@@ -62,6 +62,8 @@ private:
   using PoseMsg = RobotSubscriberNode::PoseMsg;
   using BallPoseMsg = BallSubscriberNode::PoseMsg;
 
+  static inline std::vector<std::string> create_robot_names(const std::string & name_base, int count = 16);
+
   static inline void write_cmd_vel_to_packet(const TwistMsg & cmd_vel_msg, grSim_Packet * packet, int index = 0);
 
   static inline void write_cmd_spinner_to_packet(const JointMsg & cmd_spinner_msg, grSim_Packet * packet, int index = 0);

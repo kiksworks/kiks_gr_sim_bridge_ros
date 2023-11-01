@@ -70,8 +70,32 @@ SenderNode::SenderNode(
   //   };
   // initialize_robots("yellow", yellow_, true);
   // initialize_robots("blue", blue_, false);
+  robot_subscriber_nodes_map_[true];
+  robot_subscriber_nodes_map_[false];
+  for (auto & [isteamyellow, robot_subscriber_nodes] : robot_subscriber_nodes_map_) {
+    std::string color = isteamyellow ? "yellow" : "blue";
+    this->add_param(color + "_robots", this->create_robot_names(color), [this, &robot_subscriber_nodes](const std::vector<std::string>& names) {
+      robot_subscriber_nodes.clear();
+      int id = 0;
+      for (const auto & name : names) {
+        if (name != "") {
+          robot_subscriber_nodes.emplace(id, this->create_sub_node(name));
+        }
+        ++id;
+      }
+    });
+    this->reset_subscriber_node_callbacks();
+  }
 }
 
+std::vector<std::string> SenderNode::create_robot_names(const std::string & name_base, int count)
+{
+  std::vector<std::string> names;
+  for (int i = 0; i < count; ++i) {
+    names.emplace_back(i < 10 ? name_base + "0" + std::to_string(i) : name_base + std::to_string(i));
+  }
+  return names;
+}
 
 void SenderNode::write_cmd_vel_to_packet(const TwistMsg & cmd_vel_msg, grSim_Packet * packet, int index)
 {

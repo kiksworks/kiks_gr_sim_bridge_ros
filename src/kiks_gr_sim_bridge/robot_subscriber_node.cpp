@@ -26,6 +26,9 @@ RobotSubscriberNode::RobotSubscriberNode(
   rclcpp::Node::SharedPtr node)
 : ExpandedSubNode(std::move(node))
 {
+  this->add_param("timeout_duration", 0.1, [this] (double duration) {
+      cmd_vel_timeout_duration_ = std::chrono::nanoseconds(std::int64_t(1e9 * duration));
+    });
 }
 
 // void RobotSubscriberNode::update_validity(const rclcpp::Time & now)

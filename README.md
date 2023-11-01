@@ -62,8 +62,7 @@ ros2 run kiks_gr_sim_bridge gr_sim_bridge
 ```
 
 ## Document
-- [reference](doc/reference/index.md)
-<!-- - [guide](doc/guide/index.md) -->
+- [reference(jp)](doc/reference/jp.md)
 
 ## To contribute
 read [CONTRIBUTING.md](CONTRIBUTING.md)

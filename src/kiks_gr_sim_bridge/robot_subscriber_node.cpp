@@ -26,8 +26,14 @@ RobotSubscriberNode::RobotSubscriberNode(
   rclcpp::Node::SharedPtr node)
 : ExpandedSubNode(std::move(node))
 {
-  this->add_param("timeout_duration", 0.1, [this] (double duration) {
+  this->add_param(
+    "timeout_duration", 0.1, [this](double duration) {
       cmd_vel_timeout_duration_ = std::chrono::nanoseconds(std::int64_t(1e9 * duration));
+      cmd_vel_timeout_callback_timer_.reset();
+    });
+  this->add_param(
+    "timeout_callback_count", 30, [this](int count) {
+      cmd_vel_timeout_callback_remaining_ = timeout_callback_count_ = count;
     });
 }
 

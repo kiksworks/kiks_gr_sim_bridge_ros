@@ -67,26 +67,25 @@ public:
   template<class T, class U>
   inline void set_cmd_vel_call_back(const T & call_back, const U timeout_callback)
   {
-    auto timer_callback = [this, timeout_callback] {
-        timeout_callback();
-        this->cmd_vel_timeout_callback_timer_.reset();
-      };
-
-    if (cmd_vel_timeout_callback_timer_) {
-      cmd_vel_timeout_callback_timer_ = (*this)->create_wall_timer(
-        cmd_vel_timeout_duration_,
-        timer_callback);
-    }
+    cmd_vel_timeout_callback_timer_.reset();
 
     cmd_vel_subscription_ = (*this)->create_subscription<TwistMsg>(
       "cmd_vel", this->get_dynamic_qos(),
-      [call_back, timer_callback, this](TwistMsg::ConstSharedPtr cmd_vel) {
+      [call_back, timeout_callback, this](TwistMsg::ConstSharedPtr cmd_vel) {
         call_back(cmd_vel);
         if (cmd_vel_timeout_callback_timer_) {
           cmd_vel_timeout_callback_timer_->reset();
         } else {
           cmd_vel_timeout_callback_timer_ =
-          (*this)->create_wall_timer(cmd_vel_timeout_duration_, timer_callback);
+          (*this)->create_wall_timer(
+            cmd_vel_timeout_duration_, [this, timeout_callback] {
+            timeout_callback();
+            --cmd_vel_timeout_callback_remaining_;
+            if (cmd_vel_timeout_callback_remaining_ <= 0) {
+              this->cmd_vel_timeout_callback_timer_.reset();
+            }
+          });
+          cmd_vel_timeout_callback_remaining_ = timeout_callback_count_;
         }
       });
   }
@@ -127,6 +126,7 @@ public:
 
 private:
   std::chrono::nanoseconds cmd_vel_timeout_duration_;
+  int timeout_callback_count_, cmd_vel_timeout_callback_remaining_;
 
   rclcpp::Subscription<TwistMsg>::SharedPtr cmd_vel_subscription_;
   rclcpp::Subscription<JointMsg>::SharedPtr cmd_spinner_subscription_, cmd_flat_kick_subscription_,

@@ -56,7 +56,7 @@ public:
     const rclcpp::NodeOptions & node_options = rclcpp::NodeOptions());
 
 private:
-  using ParameterMsg = rcl_interfaces::msg::ParameterValue;
+  using ParamMsg = rcl_interfaces::msg::ParameterValue;
   using TwistMsg = RobotSubscriberNode::TwistMsg;
   using JointMsg = RobotSubscriberNode::JointMsg;
   using PoseMsg = RobotSubscriberNode::PoseMsg;
@@ -92,6 +92,9 @@ private:
     const BallPoseMsg & initialpose_msg,
     grSim_Packet * packet);
 
+  inline std::unordered_map<std::uint32_t, RobotSubscriberNode> create_robots(
+    const std::vector<std::string> & names);
+
   inline void reset_subscriber_node_callbacks();
 
   inline void send_packet(const grSim_Packet & packet);
@@ -103,6 +106,8 @@ private:
   // robots & ball
   std::unordered_map<bool,
     std::unordered_map<std::uint32_t, RobotSubscriberNode>> robot_subscriber_nodes_map_;
+  std::unordered_map<bool,
+    rclcpp::Subscription<ParamMsg>::SharedPtr> robots_parameter_subscription_;
   BallSubscriberNode ball_subscriber_node_;
   std::list<grSim_Packet> cmds_packets_, replacement_packets_;
   // callback handler

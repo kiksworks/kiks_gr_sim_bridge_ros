@@ -58,26 +58,29 @@ SenderNode::SenderNode(
       this->reset_subscriber_node_callbacks();
     });
   // Parameter of robots[hz]
-  robot_subscriber_nodes_map_[true];
-  robot_subscriber_nodes_map_[false];
   auto feature_robots_param_setter = [this] {
-      for (auto & [isteamyellow, robot_subscriber_nodes] : robot_subscriber_nodes_map_) {
+      const auto teams = {true, false};
+      for (const auto & isteamyellow : teams) {
         std::string color = isteamyellow ? "yellow" : "blue";
         this->add_param(
           color + "_robots", this->create_robot_names(color),
-          [this, &robot_subscriber_nodes](const std::vector<std::string> & names) {
-            robot_subscriber_nodes.clear();
-            int id = 0;
-            for (const auto & name : names) {
-              if (name == "/") {
-                robot_subscriber_nodes.emplace(id, this->shared_from_this());
-              } else if (name != "") {
-                robot_subscriber_nodes.emplace(id, this->create_sub_node(name));
-              }
-              ++id;
-            }
+          [this, isteamyellow](const std::vector<std::string> & names) {
+            robot_subscriber_nodes_map_[isteamyellow] = this->create_robots(names);
+            this->reset_subscriber_node_callbacks();
           });
-        this->reset_subscriber_node_callbacks();
+        robots_parameter_subscription_[isteamyellow] = this->create_subscription<ParamMsg>(
+          color + "_robots", this->get_static_qos(),
+          [this, isteamyellow](ParamMsg::ConstSharedPtr robots_param_msg) {
+            if (robots_param_msg->type != 9) {
+              RCLCPP_ERROR(
+                this->get_logger(),
+                "Incorrect parameter type. Type must be \"string array (type = 9)\".");
+              return;
+            }
+            robot_subscriber_nodes_map_[isteamyellow] =
+            this->create_robots(robots_param_msg->string_array_value);
+            this->reset_subscriber_node_callbacks();
+          });
       }
       param_setting_timer_.reset();
     };
@@ -165,6 +168,23 @@ void SenderNode::write_ball_initialpose_to_packet(
   auto ball_replacement = packet->mutable_replacement()->mutable_ball();
   ball_replacement->set_x(initialpose_msg.pose.pose.position.x);
   ball_replacement->set_y(initialpose_msg.pose.pose.position.y);
+}
+
+std::unordered_map<std::uint32_t, RobotSubscriberNode>
+SenderNode::create_robots(const std::vector<std::string> & names)
+{
+  std::unordered_map<std::uint32_t, RobotSubscriberNode> robot_subscriber_nodes;
+  robot_subscriber_nodes.clear();
+  int id = 0;
+  for (const auto & name : names) {
+    if (name == "/") {
+      robot_subscriber_nodes.emplace(id, this->shared_from_this());
+    } else if (name != "") {
+      robot_subscriber_nodes.emplace(id, this->create_sub_node(name));
+    }
+    ++id;
+  }
+  return robot_subscriber_nodes;
 }
 
 inline void SenderNode::reset_subscriber_node_callbacks()
